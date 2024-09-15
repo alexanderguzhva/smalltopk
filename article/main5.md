@@ -3,7 +3,52 @@ Smalltopk library
 
 Smalltopk library is designed to speed up the training for `Product Quantization` and `Product Residual Quantization`.
 
-In this article I'll describe the train of thoughts during the development of this library.
+In this article I'll describe the train of thoughts during the development of this library. The article is very technical and focused on building the fast code.
+
+**TLDR:** A fused gemm + custom SIMD sorting networks + approximations + hacks kernel, which development process was supported by reading machine code during all stages.
+
+- [Similarity search and brute-force search](#similarity-search-and-brute-force-search)
+- [Our applications for brute-force search](#our-applications-for-brute-force-search)
+- [Details on brute-force search](#details-on-brute-force-search)
+  - [`Compare-exchange` operation](#compare-exchange-operation)
+  - [Naive solution for k=1 SIMD `brute-force search`](#naive-solution-for-k1-simd-brute-force-search)
+  - [Naive solution for k \> 1 SIMD `brute-force search`](#naive-solution-for-k--1-simd-brute-force-search)
+  - [Sorting networks for k \> 1](#sorting-networks-for-k--1)
+    - [Using sorting networks](#using-sorting-networks)
+    - [Sorting networks vs Naive SIMD solution](#sorting-networks-vs-naive-simd-solution)
+    - [Further optimization](#further-optimization)
+    - [Approximate sorting networks](#approximate-sorting-networks)
+    - [Done with sorting networks](#done-with-sorting-networks)
+  - [Data types](#data-types)
+    - [16-bit indices](#16-bit-indices)
+    - [FP16](#fp16)
+    - [BF16](#bf16)
+    - [FP32 hack](#fp32-hack)
+  - [Help a beam search for `Product Residual Quantization`](#help-a-beam-search-for-product-residual-quantization)
+  - [Relying on a compiler autovectorization](#relying-on-a-compiler-autovectorization)
+- [Creating a library](#creating-a-library)
+  - [Selecting an architecture and instruction sets](#selecting-an-architecture-and-instruction-sets)
+  - [building the library](#building-the-library)
+  - [Compilation time vs performance](#compilation-time-vs-performance)
+  - [Dependencies](#dependencies)
+    - [LIBXSMM](#libxsmm)
+  - [Intel AMX](#intel-amx)
+  - [ARM SVE](#arm-sve)
+  - [Calling conventions and a universal kernel](#calling-conventions-and-a-universal-kernel)
+  - [Masking](#masking)
+  - [Integration with FAISS](#integration-with-faiss)
+- [Benchmarks](#benchmarks)
+  - [Recall rate. How the benchmark is conducted exactly.](#recall-rate-how-the-benchmark-is-conducted-exactly)
+  - [Kernel Results](#kernel-results)
+    - [Comments about Intel Xeon 4-rd gen](#comments-about-intel-xeon-4-rd-gen)
+    - [Comments about AMD Zen 4](#comments-about-amd-zen-4)
+    - [Comments about AWS Graviton 3](#comments-about-aws-graviton-3)
+  - [Benchmarks for `Product Quantizater`](#benchmarks-for-product-quantizater)
+  - [Benchmarks for `Product Residual Quantizer`](#benchmarks-for-product-residual-quantizer)
+  - [A curious case](#a-curious-case)
+- [Conclusions](#conclusions)
+  - [Hints for the future development](#hints-for-the-future-development)
+
 
 # Similarity search and brute-force search
 
@@ -1499,7 +1544,7 @@ A typical operating point for `Product Quantizer` is k=1 and dim=2,3,4,6, maybe 
 
 Check `tests/` for the benchmark code.
 
-## Intel Xeon 4-rd gen
+### Comments about Intel Xeon 4-rd gen
 
 FP16 and AMX provide excellent speed-vs-accuracy tradeoffs.
 
@@ -1510,13 +1555,13 @@ Here are timings (msec) per various kernels:
 * Vertical axis is the time in millseconds,
 * Horizontal axis is one of 216 experiments. There are 9 groups (different dimensions), each containing 24 elements (different top-k values).
 
-## AMD Zen 4
+### Comments about AMD Zen 4
 
 Very competitive vs Intel for fp32hack kernel.
 
 ![alt text](zen_vs_xeon.png "Zen 4 vs Intel Xeon 4th gen")
 
-## AWS Graviton 3
+### Comments about AWS Graviton 3
 
 It was run on 4t vs 8t for x86 ones. 
 
