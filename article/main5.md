@@ -77,7 +77,7 @@ Additional details and assumptions:
 * * there are known inoptimal details there, which exist in order to improve readability,
 * `gcc` or `clang` C++ compiler and corresponding flags,
 * All dimensionalities and numbers of vectors are 'good', for example, divisible by certain numbers (such as 16) if needed,
-* I was developing the code on both Intel Xeon 4th gen and AWS Graviton 3. Later, I've added AMD Zen 4 for performance evaluations. No idea how the library behaves on older CPUs, tbh.
+* The code has been developed the code for both Intel Xeon 4th gen and AWS Graviton 3. Later, AMD Zen 4 was used for performance evaluations. No idea how the library behaves on older CPUs, tbh.
 * My conclusions and guesses might be wrong and/or naive.
 
 AVX512 intrinsics will be used for the demonstration, if needed.
@@ -295,7 +295,7 @@ This is a typical approach for `gemm`-style kernels: split input matrices into s
 
 Given our assumptions, distance computations are not too costly, because the dimensionality is relatively small.
 
-The problem is the `binary heap` structure, because:
+The problem is a `binary heap` structure, because:
 * it is absolutely sequential,
 * no straightforward yet simple way of using SIMD instructions,
 * it can and will cripple a CPU branch predictor.
@@ -624,7 +624,7 @@ A chain of custom sorting networks
 
 ![alt text](sn2a.png "Chain of sorting networks")
 
-For our use case, I've constructed the needed sorting networks based on the work from [Bert Dobbelaere](https://bertdobbelaere.github.io/sorting_networks.html) and his [SorterHunter](https://github.com/bertdobbelaere/SorterHunter) program. 
+For our use case, the needed sorting networks were constructed based on the work from [Bert Dobbelaere](https://bertdobbelaere.github.io/sorting_networks.html) and his [SorterHunter](https://github.com/bertdobbelaere/SorterHunter) program. 
 * `SorterHunter` is based on an evolutionary approach for searching an optimal sorting network, similar to [Hill Climbing](https://en.wikipedia.org/wiki/Hill_climbing). `SorterHunter` tracks a single best sorting network, which it initially either generates as a random valid sorting network, or reads its predefined structure from a config file. Then, the search process iteratively applies various mutations to the tracked sorting network with hopes to get a bit better sorting network (smaller number of `compare-exchange` operations or lower depth), replacing the tracked sorting network if found. 
 * The output of the `SorterHunter` program is represented as a list of pairs in the form of `(xi, yi)`, each of ones representing a single comparator between wires `xi` and `yi`. For example, a sorting network for 3 elements will be represented as `(0,1),(0,2),(1,2)`.
 * `SorterHunter` allows adding preconstructed `prefix` and `postfix` sorting networks to the one that is being searched for.
@@ -656,13 +656,13 @@ As you may see, the sorting networks approach require up to 60% less `compare-ex
 
 In reality, the number of `compare-exchange` operations for an optimal fully sorting network is less than provided in the table, because a C++ compiler notices that some outputs are unused and eliminates corresponding unneeded `compare-exchange` operations. Thus, an optimal fully sorting network provides a better performance than a naive solution, but worse than our custom sorting network.
 
-I'm not sure whether the sorting networks that were chosen for the library are the best possible, because I performed a somewhat short search, taking several minutes only with 8 instances of `SorterHunter` program running in parallel. But I hope that they are close to optimal nonetheless.
+I'm not sure whether the sorting networks that were chosen for the library are the best possible, because I performed a somewhat short search, taking several minutes only with 8 instances of `SorterHunter` program running in parallel. But let's hope that they are close to optimal nonetheless.
 
 ### Further optimization
 
 It is possible to further reduce the number of `compare-exchange` operations in our custom sorting network.
 
-Let me demonstrate an example for tracked best `K=16` and candidates `N=16`.
+Let's demonstrate an example for tracked best `K=16` and candidates `N=16`.
 
 Technically, our custom sorting network is designed to be able to replace all 16 tracked best with 16 candidates. This rarely happens in reality, because only some of tracked best need to replaced by candidates. We may alter the process as follows:
 
@@ -790,7 +790,9 @@ It is possible to increase the performance by using lower-precision representati
 
 ### 16-bit indices
 
-For AVX512, one may use `__m256i` registers for indices (16 x uint16_t) instead of `__m512i` registers (16 x uint32_t), which leads to performance improvements. The reason is that `__m256i`-based instructions are cheaper and x86 CPUs is capable of processing two `__m256i`-based instructions per cycle instead of one `__m512i`-based. According to our assumptions, we're storing `[0, n_data)` values in every SIMD lane and `n_data` is expected to be small (256, most likely). Using `__m128i` is not very performance-different vs `__m256i`, so I would stick with `__m256i`.
+For AVX512 and fp32 distances, one may use `__m256i` registers for indices (16 x uint16_t) instead of `__m512i` registers (16 x uint32_t), which leads to performance improvements. The reason is that `__m256i`-based instructions are cheaper and x86 CPUs is capable of processing two `__m256i`-based instructions per cycle instead of one `__m512i`-based. According to our assumptions, we're storing `[0, n_data)` values in every SIMD lane and `n_data` is expected to be small (256, most likely). Using `__m128i` is not very performance-different vs `__m256i`, so sticking with `__m256i` looks optimal.
+
+So, for our fp32-distances kernel we're using `__m512` for storing distances and `__m256i` for storing indices of our `(distance, index)` key-value pairs.
 
 For SVE for AWS Graviton 3, no particular performance difference was noticed when using `svuint32_t` vs `svuint16_t`.
 
@@ -800,9 +802,7 @@ It is possible to use fp16 [half-precision](https://en.wikipedia.org/wiki/Half-p
 
 On ARM SVE, fp16 is just available.
 
-On x86 platform, the needed fp16 support is provided starting from Intel Xeon 4th-gen CPUs ([Sapphire Rapids](https://en.wikipedia.org/wiki/Sapphire_Rapids)). 
-
-Using fp16 data type means that we need to convert 
+On x86 platform, the needed fp16 support is provided starting from Intel Xeon 4th-gen CPUs ([Sapphire Rapids](https://en.wikipedia.org/wiki/Sapphire_Rapids)). Prior to that, the only kind of supported instructions is FP16<->FP32 conversion.
 
 ### BF16
 
@@ -1274,7 +1274,7 @@ void compute_something() {
 ```
 and it would totally make sense to have non-inline functions.
 
-As of today, I cannot reliably define my own custom calling convention without inline assembly, thus I cannot afford to have dedicated pieces (with forced non-inlining) of code for, say, two-dimensional or three-dimensional data, without a performance loss. As a result, I use the following approach:
+As of today, it is not possible to reliably define our own custom calling convention without inline assembly, thus we cannot afford to have dedicated pieces (with forced non-inlining) of code for, say, two-dimensional or three-dimensional data, without a performance loss. As a result, the following approach was used:
 ``` C++
     ...
     switch(dim) {
@@ -1284,7 +1284,7 @@ As of today, I cannot reliably define my own custom calling convention without i
         case 32: compute_something<32>(...); break;
     }
 ```
-It leads to a BIG kernel, but surprisingly (!) it performs with almost no performance regression, compared to a fully templatized kernel for a fixed size of parameters. The only price that I have to pay is the increased size of a compiled binary. Also, SIMD register allocations may be inoptimal, which can be somewhat fixed with `-march=native -mtune=native` C++ compiler flags.
+It leads to a BIG kernel, but surprisingly (!) it performs with almost no performance regression, compared to a fully templatized kernel for a fixed size of parameters. The only price has to be paid is the increased size of a compiled binary. Also, SIMD register allocations may be inoptimal, which can be somewhat fixed with `-march=native -mtune=native` C++ compiler flags.
 
 So, the template of the `universal` kernel that is used in the library follows the pattern:
 ``` C++
@@ -1424,13 +1424,15 @@ This library uses the following approach:
 
 I've created a dedicated FAISS index and related facilities, which allow to be used for k-means purposes. As a result, it is possible to speed up training of `faiss::ProductQuantizer` and `faiss::ProductResidualQuantizer` quantizers and corresponding FAISS indices.
 
-TODO: include
+The corresponding code can be found in `faiss/` directory.
 
 # Benchmarks
 
 Intel Xeon 4th gen vs AMD Zen 4 vs Graviton 3
 
-All benchmarks were conducted on cloud instances, which is a PITA. For an ideal reproducible results, one needs to get a dedicated machine, turn off hyper-threading in BIOS, lock the frequency, disable background processes, etc. (for example, more details [here](https://lemire.me/blog/2018/01/16/microbenchmarking-calls-for-idealized-conditions/), including comments) In our Gray Cloudy Reality we have to run a baseline test and then immediately a candidate one, maybe several times, and we need to make sure that baseline results are somewhat reproducible. 
+All benchmarks were conducted on cloud machines, which is a PITA. For an ideal reproducible results, one needs to get a dedicated machine, turn off hyper-threading in BIOS, lock the frequency, disable background processes, etc. (more details [here](https://rigtorp.se/low-latency-guide/)) In our Gray Cloudy Reality we have to run a baseline test and then immediately a candidate one, maybe several times, and we need to make sure that baseline results are somewhat reproducible. 
+
+So, all results contain some noise, which is related to the measurements conducted on cloud-based machines.
 
 There were two baselines, each is based on [FAISS library](https://github.com/facebookresearch/faiss) code: 
 * Baseline 1 is based on `exhaustive_L2sqr_seq()` function ([source](https://github.com/facebookresearch/faiss/blob/main/faiss/utils/distances.cpp)), which uses naive distance computations (`fvec_L2sqr()`) and a binary heap for tracking best `(distance, index)` key-value pairs.
@@ -1532,16 +1534,41 @@ FAISS library contains special optimizations for k=1 use case that I've added in
 
 Compared to both [AVX2](https://github.com/facebookresearch/faiss/blob/main/faiss/utils/distances_fused/simdlib_based.h) and [AVX512](https://github.com/facebookresearch/faiss/blob/main/faiss/utils/distances_fused/avx512.h) implementations in FAISS, our fp32hack implementation for `n_data = 256` (most typical PQ8 case) is 1.5-2.5x times faster (depending on dim) on x86 Intel Xeon 4-th gen CPU.
 
+Here is the table with required `IndexPQ` training time (seconds) for a random dataset 131072 x 192, performed on Intel Xeon 4th gen. As a reference, we use FAISS 1.8.0+ (master branch) compiled for AVX512, AVX2 and a default instruction set. `clang-19` was used for compiling the code. `mimalloc` was used.
+| dsub | 2 | 3 | 4 | 8 | 16 |
+|---|---|---|---|---|---|
+|faiss AVX512|6.22|4.38|3.34|1.88|1.14|
+|faiss AVX2|7.71|5.27|3.51|1.95|1.43|
+|faiss|38.23|26.13|19.85|10.17|5.20|
+|smalltopk fp32|2.58|1.82|1.40|0.82|0.55|
+|smalltopk fp16|2.19|1.51|1.14|0.62|0.39|
+|smalltopk fp32hack|2.54|1.83|1.39|0.80|0.54|
+|smalltopk fp32hack_amx|2.83|1.96|1.44|0.74|0.40|
+|smalltopk fp32hack_approx|2.63|1.86|1.45|0.83|0.54|
+
 ## Benchmarks for `Product Residual Quantizer`
 
 Baseline is `faiss::ProductResidualQuantizer` implementation. Our candidate is a patched version that uses the library.
 
 `Product Residual Quantizer` is notorious for having a slow training process. 
 
-Basically, the use of library makes `Product Residual Quantizer` practical, because the training process becomes 10+ times faster. 
+Basically, the use of library makes `Product Residual Quantizer` practical, because the training process becomes 10+ times faster (if a couple of additional known patches are applied to FAISS codebase). 
 * For 1M x 768 dimensions dataset, the training time of `faiss::IndexProductResidualQuantizer` becomes several minutes (on Intel Xeon 4th gen) for the parameters that I was interested in, comparable to the training time of [HNSW](https://arxiv.org/abs/1603.09320). 
 * * `Product Quantization` training takes less than a minute.
 * Without the library, it takes 100+ minutes to train `Product Residual Quantizer`.
+
+Here is the table with the training time (milliseconds) for a benchmark, because the training time takes the most of the time. No additional FAISS patches were applied. We're using a 65536 x 128 dataset with a random data, evaluations are performed on Intel Xeon 4th gen. As a reference, we use FAISS 1.8.0+ (master branch) compiled for AVX512, AVX2 and a default instruction set. `clang-19` was used for compiling the code. `mimalloc` was used.
+
+| (nrq, dsub) |(16, 4)|(8, 8)|(4, 16)|(2, 32)|(8, 4)|(4, 8)|(2, 16)|
+|---|---|---|---|---|---|---|---|
+|faiss AVX512|53.44|46.56|39.66|28.02|24.97|20.36|14.25|
+|smalltopk fp32|13.90|10.86|9.01|6.91|6.51|4.83|3.53|
+|smalltopk fp16|11.83|9.25|7.93|6.24|5.48|4.18|3.19|
+|smalltopk fp32hack|12.92|9.95|8.26|6.36|6.14|4.63|3.40|
+|smalltopk fp32hack_amx|11.58|9.68|8.45|6.69|5.38|4.38|3.35|
+|smalltopk fp32hack_approx|12.94|9.91|8.19|6.32|6.01|4.45|3.27|
+
+FAISS will benefit from some separate additional and already created and tested pieces of code, which improve certain PRQ components that became worthy enough to be improved. So, the real production improvements are higher.
 
 ## A curious case
 
@@ -1604,7 +1631,7 @@ On AWS Graviton 3, SVE code was also somewhat affected by a similar transpose ch
 
 # Conclusions
 
-10+ times faster.
+Faster.
 
 ## Hints for the future development
 

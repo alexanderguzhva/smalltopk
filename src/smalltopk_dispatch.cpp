@@ -93,7 +93,7 @@ static void init_hook_x86() {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp16;
 
         if (verbosity > 0) {
-            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp16 kernel\n");
+            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp16 kernel as a default one\n");
         }
 
         return;
@@ -103,7 +103,7 @@ static void init_hook_x86() {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32hack;
 
         if (verbosity > 0) {
-            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack kernel\n");
+            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack kernel as a default one\n");
         }
 
         return;
@@ -115,7 +115,7 @@ static void init_hook_x86() {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32hack_amx;
 
         if (verbosity > 0) {
-            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack_amx kernel\n");
+            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack_amx kernel as a default one\n");
         }
 
         return;
@@ -125,7 +125,7 @@ static void init_hook_x86() {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32hack_approx;
 
         if (verbosity > 0) {
-            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack_approx kernel\n");
+            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack_approx kernel as a default one\n");
         }
 
         return;
@@ -135,7 +135,7 @@ static void init_hook_x86() {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32;
 
         if (verbosity > 0) {
-            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32 kernel\n");
+            printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32 kernel as a default one\n");
         }
 
         return;
@@ -158,31 +158,31 @@ static void init_hook_aarch64() {
     if (InstructionSet::get_instance().is_sve_supported) {
         if (env_kernel == "fp16" || env_kernel == "2") {
             if (verbosity > 0) {
-                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp16 kernel\n");
+                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp16 kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp16;
         } else if (env_kernel == "fp32hack" || env_kernel == "hack" || env_kernel == "3") {
             if (verbosity > 0) {
-                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32hack kernel\n");
+                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32hack kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32hack;
         } else if (env_kernel == "fp32hack_approx" || env_kernel == "hack_approx" || env_kernel == "5") {
             if (verbosity > 0) {
-                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32hack_approx kernel\n");
+                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32hack_approx kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32hack_approx;
         } else if (env_kernel == "fp32" || env_kernel == "1") {
             if (verbosity > 0) {
-                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32 kernel\n");
+                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32 kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32;
         } else {
             if (verbosity > 0) {
-                printf("smalltopk uses a default knn_L2sqr_fp32_sve_sorting_fp32 kernel\n");
+                printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32 kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32;
