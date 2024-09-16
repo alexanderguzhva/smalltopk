@@ -1471,6 +1471,45 @@ I've created a dedicated FAISS index and related facilities, which allow to be u
 
 The corresponding code can be found in `faiss/` directory.
 
+The way of integrating with `PQ` is the following:
+```C++
+    faiss::ProductQuantizer pq;
+
+    auto index_assign_factory = 
+        std::make_unique<smalltopk::IndexFlatL2SmallTopKFactory>(kernel);
+    pq.assign_index = index_assign_factory->operator()(pq.dsub);
+
+    // don't forget to synchronize the lifetime of `assign_index` field, 
+    //   because ProductQuantizer does not own this pointer 
+```
+or
+```C++
+    faiss::ProductQuantizer pq;
+
+    auto topk_index = std::make_unique<smalltopk::IndexFlatL2SmallTopK>(pq.dsub);
+    topk_index->smalltopk_kernel = kernel;
+
+    pq.assign_index = topk_index.get();
+
+    // don't forget to synchronize the lifetime of `assign_index` field, 
+    //   because ProductQuantizer does not own this pointer 
+```
+
+The way of integrating with `PRQ` is the following:
+```C++
+    faiss::ProductResidualQuantizer prq;
+
+    auto index_assign_factory = 
+        std::make_unique<smalltopk::IndexFlatL2SmallTopKFactory>(kernel);
+    for (auto* aq : prq.quantizers) {
+        faiss::ResidualQuantizer* rq = dynamic_cast<faiss::ResidualQuantizer*>(aq);
+        rq->assign_index_factory = index_assign_factory.get();
+    }
+
+    // don't forget to synchronize the lifetime of `index_assign_factory` field, 
+    //   because ResidualQuantizer does not own this pointer 
+```
+
 # Benchmarks
 
 Intel Xeon 4th gen vs AMD Zen 4 vs Graviton 3
