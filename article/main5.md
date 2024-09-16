@@ -5,6 +5,8 @@ Smalltopk library is designed to speed up the training for `Product Quantization
 
 In this article I'll describe the train of thoughts during the development of this library. The article is very technical and focused on building the fast code.
 
+TODO: Github's markdown rendereding is not impressive at all, so I'd read this article from a Visual Studio Code preview. Render as a PDF, maybe?
+
 **TLDR:** A fused gemm + custom SIMD sorting networks + approximations + hacks kernel, which development process was supported by reading machine code during all stages.
 
 - [Similarity search and brute-force search](#similarity-search-and-brute-force-search)
@@ -126,6 +128,8 @@ Additional details and assumptions:
 * My conclusions and guesses might be wrong and/or naive.
 
 AVX512 intrinsics will be used for the demonstration, if needed.
+
+A VERY detailed information of current standard algorithms and approaches in the `similarity search` area can be found in the [article](https://arxiv.org/pdf/2401.08281) about the [FAISS library](https://github.com/facebookresearch/faiss) and on [FAISS Wiki](https://github.com/facebookresearch/faiss/wiki).
 
 # Our applications for brute-force search
 
