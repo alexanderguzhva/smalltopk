@@ -11,3 +11,15 @@ Tested on:
 * AMD Zen 4 (9R14)
 * AWS Graviton 3
 
+# Building the library
+
+Please refer to the following [section](article/main5.md#building-the-library).
+
+# Integration with FAISS
+
+Please refer to the following [section](article/main5.md#integration-with-faiss).
+
+FAISS library can be found on [github](https://github.com/facebookresearch/faiss).
+
+Benchmarks for [Product Quantizer](article/main5.md#benchmarks-for-product-quantizater) and [Product Residual Quantizer](article/main5.md#benchmarks-for-product-residual-quantizer).
+

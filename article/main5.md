@@ -28,7 +28,7 @@ In this article I'll describe the train of thoughts during the development of th
   - [Relying on a compiler autovectorization](#relying-on-a-compiler-autovectorization)
 - [Creating a library](#creating-a-library)
   - [Selecting an architecture and instruction sets](#selecting-an-architecture-and-instruction-sets)
-  - [building the library](#building-the-library)
+  - [Building the library](#building-the-library)
   - [Compilation time vs performance](#compilation-time-vs-performance)
   - [Dependencies](#dependencies)
     - [LIBXSMM](#libxsmm)
@@ -1116,7 +1116,7 @@ HookInit hook_init;
 
 I'll be using a templated C++ code that tries to unify different data types (fp32, fp16, ...) for a particular hardware architecture.
 
-## building the library
+## Building the library
 
 The library is designed to be built using [CMake build system](https://cmake.org/).
 
@@ -1467,7 +1467,7 @@ This library uses the following approach:
 
 ## Integration with FAISS
 
-I've created a dedicated FAISS index and related facilities, which allow to be used for k-means purposes. As a result, it is possible to speed up training of `faiss::ProductQuantizer` and `faiss::ProductResidualQuantizer` quantizers and corresponding FAISS indices.
+`faiss/` directory contains a dedicated FAISS index and related facilities, which allow the library to be used for k-means purposes. As a result, it is possible to speed up training of `faiss::ProductQuantizer` and `faiss::ProductResidualQuantizer` quantizers and corresponding FAISS indices.
 
 The corresponding code can be found in `faiss/` directory.
 
