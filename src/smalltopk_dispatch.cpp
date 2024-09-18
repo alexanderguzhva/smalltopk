@@ -22,6 +22,8 @@ extern "C" {
 #include "x86/avx512_sorting_fp32hack.h"
 #include "x86/avx512_sorting_fp32hack_amx.h"
 #include "x86/avx512_sorting_fp32hack_approx.h"
+
+#include "x86/avx512_getmink_fp32.h"
 #endif
 
 #ifdef __aarch64__
@@ -62,7 +64,6 @@ using get_k_fp32_handler_type = bool(*)(
 );
 
 get_k_fp32_handler_type current_get_min_k_fp32_hook = get_min_k_fp32_dummy;
-get_k_fp32_handler_type current_get_max_k_fp32_hook = get_max_k_fp32_dummy;
 
 //
 int32_t verbosity = 0;
@@ -133,6 +134,7 @@ static void init_hook_x86() {
 
     if (is_avx512_fp32_supported || (env_kernel == "fp32" || env_kernel == "1")) {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32;
+        current_get_min_k_fp32_hook = get_min_k_fp32_avx512;
 
         if (verbosity > 0) {
             printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32 kernel as a default one\n");
@@ -199,7 +201,6 @@ static void init_hook_aarch64() {
 static void init_hook() {
     current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_dummy;
     current_get_min_k_fp32_hook = get_min_k_fp32_dummy;
-    current_get_max_k_fp32_hook = get_max_k_fp32_dummy;
 
     //
     std::string env_verbose = get_env("SMALLTOPK_VERBOSE").value_or("");
@@ -303,7 +304,7 @@ bool knn_L2sqr_fp32(
 }
 
 // finds k elements with min distances
-bool get_min_k(
+bool get_min_k_fp32(
     const float* const __restrict src_dis,
     const uint32_t n,
     const uint8_t k,
@@ -312,18 +313,6 @@ bool get_min_k(
     const GetKParameters* const __restrict params
 ) {
     return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
-}
-
-// finds k elements with max distances
-bool get_max_k(
-    const float* const __restrict src_dis,
-    const uint32_t n,
-    const uint8_t k,
-    float* const __restrict dis,
-    int32_t* const __restrict ids,
-    const GetKParameters* const __restrict params
-) {
-    return smalltopk::current_get_max_k_fp32_hook(src_dis, n, k, dis, ids, params);
 }
 
 // init hook

@@ -305,7 +305,7 @@ bool kernel_sorting_fp32hack_pre_k(
                 //     cmpxchg
                 // );
 #define DISPATCH_PARTIAL_SN(SRT_K, SRT_N) \
-                PartialSortingNetwork<SRT_K, SRT_N>::sort<DistancesEngineT, IndicesEngineT, decltype(cmpxchg)>( \
+                PartialSortingNetwork<SRT_K, SRT_N>::template sort<DistancesEngineT, IndicesEngineT, decltype(cmpxchg)>( \
                     REPEAT_1D(ADD_SORTING_PAIR, SRT_K)  \
                     REPEAT_1D(ADD_CANDIDATE_PAIR, SRT_N)    \
                     cmpxchg \

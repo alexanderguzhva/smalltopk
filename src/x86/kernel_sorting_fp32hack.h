@@ -210,7 +210,7 @@ bool kernel_sorting_fp32hack_pre_k(
 
 #define DISPATCH_PARTIAL_SN(SRT_K, SRT_N, OFFSET_N)                                                             \
         {                                                                                                       \
-            PartialSortingNetwork<SRT_K, SRT_N>::sort<DistancesEngineT, IndicesEngineT, decltype(&cmpxchg)>(    \
+            PartialSortingNetwork<SRT_K, SRT_N>::template sort<DistancesEngineT, IndicesEngineT, decltype(&cmpxchg)>(    \
                 sorting_d,                                                                                      \
                 sorting_i,                                                                                      \
                 dp_i + OFFSET_N,                                                                                \
@@ -241,6 +241,7 @@ bool kernel_sorting_fp32hack_pre_k(
 
 #undef DISPATCH_PARTIAL_SN
 #undef DISPATCH_SN
+
     }
 
 

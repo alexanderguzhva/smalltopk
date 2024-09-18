@@ -10,11 +10,13 @@ set(SMALLTOPK_SRCS
 SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fopenmp")
 
 # set default flags
-OPTION(SMALLTOPK_ENABLE_FP32 "Whether to enable fp32 kernel" OFF)
-OPTION(SMALLTOPK_ENABLE_FP32HACK "Whether to enable fp32hack kernel" ON)
-OPTION(SMALLTOPK_ENABLE_FP16 "Whether to enable fp16 kernel" OFF)
-OPTION(SMALLTOPK_ENABLE_AVX512_FP32HACK_AMX "Whether to enable fp32hack kernel with AMX" OFF)
-OPTION(SMALLTOPK_ENABLE_FP32HACK_APPROX "Whether to enable fp32hack kernel with 'fixed number of worthy candidates' approach" OFF)
+OPTION(SMALLTOPK_ENABLE_FP32 "Whether to enable fp32 knn kernel" OFF)
+OPTION(SMALLTOPK_ENABLE_FP32HACK "Whether to enable fp32hack knn kernel" ON)
+OPTION(SMALLTOPK_ENABLE_FP16 "Whether to enable fp16 knn kernel" OFF)
+OPTION(SMALLTOPK_ENABLE_AVX512_FP32HACK_AMX "Whether to enable fp32hack knn kernel with AMX" OFF)
+OPTION(SMALLTOPK_ENABLE_FP32HACK_APPROX "Whether to enable fp32hack knn kernel with 'fixed number of worthy candidates' approach" OFF)
+
+OPTION(SMALLTOPK_ENABLE_GETMINK_FP32 "Whether to enable fp32 getmink kernel" OFF)
 
 # files
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
@@ -25,7 +27,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     # this file is always needed
     list(APPEND SMALLTOPK_SRCS x86/x86_instruction_set.cpp)
 
-    # FP32 is not very useful
+    # knn FP32 is not very useful
     if (SMALLTOPK_ENABLE_FP32)
         message(STATUS "including fp32 kernel")
 
@@ -37,7 +39,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
         list(APPEND SMALLTOPK_SRCS x86/avx512_sorting_fp32_dummy.cpp)
     endif()
 
-    # FP32 hack
+    # knn FP32 hack
     if (SMALLTOPK_ENABLE_FP32HACK)
         message(STATUS "including fp32hack kernel")
 
@@ -49,7 +51,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
         list(APPEND SMALLTOPK_SRCS x86/avx512_sorting_fp32hack_dummy.cpp)
     endif()
 
-    # FP16 is not widely available
+    # knn FP16 is not widely available
     if (SMALLTOPK_ENABLE_FP16)
         message(STATUS "including fp16 kernel")
 
@@ -61,7 +63,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
         list(APPEND SMALLTOPK_SRCS x86/avx512_sorting_fp16_dummy.cpp)
     endif()
 
-    # FP32 hack + AMX
+    # knn FP32 hack + AMX
     if (SMALLTOPK_ENABLE_AVX512_FP32HACK_AMX)
         message(STATUS "including fp32hack AMX kernel")
 
@@ -79,7 +81,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
         )
     endif()
 
-    # FP32 hack + APPROX
+    # knn FP32 hack + APPROX
     if (SMALLTOPK_ENABLE_FP32HACK_APPROX)
         message(STATUS "including fp32hack approx kernel")
 
@@ -89,6 +91,20 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
         message(STATUS "not including fp32hack approx kernel")
 
         list(APPEND SMALLTOPK_SRCS x86/avx512_sorting_fp32hack_approx_dummy.cpp)
+    endif()
+
+
+
+    # getmink FP32 
+    if (SMALLTOPK_ENABLE_GETMINK_FP32)
+        message(STATUS "including fp32 getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS x86/avx512_getmink_fp32.cpp)
+        set_source_files_properties(x86/avx512_getmink_fp32.cpp PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512vl -mavx512dq -mavx512cd")
+    else()
+        message(STATUS "not including fp32 getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS x86/avx512_getmink_fp32_dummy.cpp)
     endif()
 
 elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
@@ -101,7 +117,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
     # this file is always needed
     list(APPEND SMALLTOPK_SRCS arm/arm_instruction_set.cpp)
 
-    # FP32 is not very useful
+    # knn FP32 is not very useful
     if (SMALLTOPK_ENABLE_FP32)
         message(STATUS "including fp32 kernel")
 
@@ -113,7 +129,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
         list(APPEND SMALLTOPK_SRCS arm/sve_sorting_fp32_dummy.cpp)
     endif()
 
-    # FP32 hack
+    # knn FP32 hack
     if (SMALLTOPK_ENABLE_FP32HACK)
         message(STATUS "including fp32hack kernel")
 
@@ -125,7 +141,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
         list(APPEND SMALLTOPK_SRCS arm/sve_sorting_fp32hack_dummy.cpp)
     endif()
 
-    # FP16 is not widely available
+    # knn FP16 is not widely available
     if (SMALLTOPK_ENABLE_FP16)
         message(STATUS "including fp16 kernel")
 
@@ -137,7 +153,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
         list(APPEND SMALLTOPK_SRCS arm/sve_sorting_fp16_dummy.cpp)
     endif()
 
-    # FP32 hack + APPROX
+    # knn FP32 hack + APPROX
     if (SMALLTOPK_ENABLE_FP32HACK_APPROX)
         message(STATUS "including fp32hack approx kernel")
 

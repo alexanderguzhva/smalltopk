@@ -31,16 +31,4 @@ bool get_min_k_fp32_dummy(
     return false;
 }
 
-// does nothing
-bool get_max_k_fp32_dummy(
-    const float* const __restrict src_dis,
-    const uint32_t n,
-    const uint8_t k,
-    float* const __restrict dis,
-    int32_t* const __restrict ids,
-    const GetKParameters* const __restrict params
-) {
-    return false;
-}
-
 }  // namespace smalltopk

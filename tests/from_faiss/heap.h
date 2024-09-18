@@ -209,5 +209,34 @@ inline size_t maxheap_reorder(size_t k, T* bh_val, int64_t* bh_ids) {
     return heap_reorder<CMax<T, int64_t>>(k, bh_val, bh_ids);
 }
 
+
+/*******************************************************************
+ * Add n elements to the heap
+ *******************************************************************/
+
+/* Add some elements to the heap  */
+template <class C>
+inline void heap_addn(
+        size_t k,
+        typename C::T* bh_val,
+        typename C::TI* bh_ids,
+        const typename C::T* x,
+        const typename C::TI* ids,
+        size_t n) {
+    size_t i;
+    if (ids)
+        for (i = 0; i < n; i++) {
+            if (C::cmp(bh_val[0], x[i])) {
+                heap_replace_top<C>(k, bh_val, bh_ids, x[i], ids[i]);
+            }
+        }
+    else
+        for (i = 0; i < n; i++) {
+            if (C::cmp(bh_val[0], x[i])) {
+                heap_replace_top<C>(k, bh_val, bh_ids, x[i], i);
+            }
+        }
+}
+
 }
 }
