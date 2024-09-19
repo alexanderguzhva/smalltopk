@@ -26,7 +26,7 @@ TODO: Github's markdown rendereding is not impressive at all, so I'd read this a
     - [FP16](#fp16)
     - [BF16](#bf16)
     - [FP32 hack](#fp32-hack)
-  - [Help a beam search for `Product Residual Quantization`](#help-a-beam-search-for-product-residual-quantization)
+  - [Helping a beam search for `Product Residual Quantization`](#helping-a-beam-search-for-product-residual-quantization)
   - [Relying on a compiler autovectorization](#relying-on-a-compiler-autovectorization)
 - [Creating a library](#creating-a-library)
   - [Selecting an architecture and instruction sets](#selecting-an-architecture-and-instruction-sets)
@@ -634,7 +634,7 @@ There are several possible 'performance' metrics for a sorting network ([for exa
 Sorting networks are well suitable for sorting a small array of values or key-value pairs. On a hardware level, the corresponding assembly code is completely branchless sequence of instructions of a certain length, which is dependent on the structure of the sorting network and is independent from values in the input data. 
 
 A sorting network can operate on SIMD registers as well.
-* Either, for sorting lanes of a single SIMD register using `permute` operation (`permutexvar` for AVX512 or `svtbl` for ARM SVE). For example, the sorting network for 6 fp32 scalar inputs provided above can be implemented using 5 SIMD `permute` + 5 SIMD `min` operations + 5 SIMD `max` operations, given that the length of a SIMD register is at least 6. One can easily find related articles about `permute` + sorting network array sorting on the Internet.
+* Either, for sorting lanes of a single SIMD register using `permute` operation (`permutexvar` for AVX512 or `svtbl` for ARM SVE). For example, the sorting network for 6 fp32 scalar inputs provided above can be implemented using 5 SIMD `permute` + 5 SIMD `min` operations + 5 SIMD `max` operations, given that the length of a SIMD register is at least 6. One can easily find related articles about `permute` + sorting network array sorting on the Internet. Some good code can be found in Intel's [x86-simd-sort](https://github.com/intel/x86-simd-sort) library.
 * Or, for sorting independent arrays, the number of ones is defined by a length of a SIMD register. For example, it is possible to sort 16 independent fp32 arrays of size 6 by using 6 AVX512 ZMM registers, and the implementation takes 12 SIMD `min` + 12 SIMD `max` operations. 
 
 ### Using sorting networks
@@ -1018,9 +1018,9 @@ Nothing prevents 10-bit and even 12-bit indices to be used with the same fp32hac
 Overall, `fp32hack` provides performance improvements without almost no recall loss.
 * Just for the protocol: I did not study a degenerate case of 1-dimensional data for `k=1` for `fp32hack`, maybe the recall rate is 0.9-ish there.
 
-## Help a beam search for `Product Residual Quantization`
+## Helping a beam search for `Product Residual Quantization`
 
-For `Product Residual Quantizer` training, we also need to be able to extract top `K` best `(distance, index)` key-value pairs from a longer vector of such key-value pairs, say, 4096 of ones. This is needed by a beam search process, which is intensively used during `PRQ` training.
+For `Product Residual Quantizer` training, we also need to be able to extract top `K` best `(distance, index)` key-value pairs from a longer vector of such key-value pairs, say, 4096 of ones. This is needed by a beam search process, which is intensively used during both `PRQ` training and populating with points (`faiss::IndexProductResidualQuantizer::add()` function).
 
 The solution is straighforward and similar to the previous one: use a sorting network that operates on SIMD registers.
 * Initialize a sorting network, which tracks `M` best in every SIMD lane (across `M` SIMD registers for distances and `M` ones for indices),
@@ -1041,6 +1041,57 @@ Curiously, this process is usually Much faster than extracting `K` values from `
 In theory, a different approach that uses `permutexvar`s over transposed SIMD registers plus a sorted `bottom` SIMD register is possible, but I did not explore this approach.
 
 TODO: write a code snippet
+
+The required functionality is provided by `get_min_k_fp32()` function.
+``` C++
+bool get_min_k(
+    const float* const __restrict src_dis,
+    const size_t n,
+    const size_t k,
+    float* const __restrict dis,
+    ssize_t* const __restrict ids,
+    const GetKParameters* const __restrict params
+)
+```
+It is a specialized version of a partial sort (such as `std::partial_sort()`) for `(distance, index)` key-value pairs, which assumes that indices are sequentially increasing integer values that start from 0.
+
+A naive implementation could look the following:
+```C++
+bool get_min_k(
+    const float* const __restrict src_dis,
+    const size_t n,
+    const size_t k,
+    float* const __restrict dis,
+    ssize_t* const __restrict ids,
+    const GetKParameters* const __restrict params
+) {
+    if (k > n) {
+        return false;
+    }
+    
+    std::vector<ssize_t> tmp_indices(n);
+    std::iota(tmp_indices.begin(), tmp_indices.end(), 0);
+
+    std::partial_sort(
+        tmp_indices.begin(),
+        tmp_indices.begin() + k,
+        tmp_indices.end(), 
+        [&](const ssize_t& a, const ssize_t& b) { return src_dis[a] < src_dis[b]; });
+
+    for (size_t i = 0; i < k; i++) {
+        dis[i] = src_dis[tmp_indices[i]];
+        ids[i] = tmp_indices[i];
+    }
+
+    return true;
+}
+```
+
+Our sorting networks based implementation is approximate, meaning that it may lose certain good candidates because of a wrong luck. 
+
+Our implementation may operate on large k values.
+
+The result depends on the SIMD width. The larger the width is, the more accurate results are.
 
 ## Relying on a compiler autovectorization
 
@@ -1084,28 +1135,28 @@ I've decided to use a dynamic function pointers approach, which implies that an 
 using kernel_type = bool(*)(int x, int y);
 
 // current kernel
-kernel_type used_kernel_type;
+kernel_type current_kernel;
 
 // initializes the hook
 static void init_hook() {
 #ifdef __x86_64__
     // pick a version for x86
-    if (supports_avx512()) { kernel_type = kernel_impl_avx512(); }
-    else if (supports_amx()) { kernel_type = kernel_impl_amx(); }
-    else { kernel_type = kernel_impl_x86_default(); } 
+    if (supports_avx512()) { current_kernel = kernel_impl_avx512(); }
+    else if (supports_amx()) { current_kernel = kernel_impl_amx(); }
+    else { current_kernel = kernel_impl_x86_default(); } 
 #elif __aarch64__
     // pick a version for ARM
-    if (supports_sve()) { kernel_type = kernel_impl_ave(); }
-    else { kernel_type = kernel_impl_arm_default(); }
+    if (supports_sve()) { current_kernel = kernel_impl_ave(); }
+    else { current_kernel = kernel_impl_arm_default(); }
 #else
     // some unknown arch
-    kernel_type = kernel_impl_unsupported();
+    current_kernel = kernel_impl_unsupported();
 #endif
 }
 
 // this is an exported function
 DLL_EXPORT bool call_kernel(int x, int y) {
-    return kernel_type(x, y);
+    return current_kernel(x, y);
 }
 
 // runs a hook upon loading the library
@@ -1131,7 +1182,7 @@ Ultimately, the library provides a facility for performing a brute-force search:
 // * distances is (n_query, k).
 // * indices is (n_query, k)
 // returns true if the computation was performed
-bool search(
+bool brute_force_search(
     const float* __restrict data,
     const size_t n_data,
     const size_t dim,
@@ -1148,6 +1199,21 @@ This method returns `false` if an unsupported combination of parameters was pass
 `search()` call handles dim `[1..32]` and k `[1..24]` use cases.
 
 Internally, `search()` picks the right kernel either according to settings in `params` input variable, or according to an environment variable `SMALLTOPK_KERNEL`.
+
+Also, the library provides a specialized version of a partial sort:
+``` C++
+bool get_min_k(
+    const float* const __restrict src_dis,
+    const size_t n,
+    const size_t k,
+    float* const __restrict dis,
+    ssize_t* const __restrict ids,
+    const GetKParameters* const __restrict params
+);
+```
+Same conventions are applied (TODO: ENV VARIABLES NAMING).
+
+Note: only fp32 kernel version of the `get_min_k` function is provided in the library, although it is trivial to add a support for fp32hack or fp16.
 
 Every kernel has the following function signature:
 ``` C++
