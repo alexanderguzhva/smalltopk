@@ -32,6 +32,8 @@ extern "C" {
 #include "arm/sve_sorting_fp16.h"
 #include "arm/sve_sorting_fp32hack.h"
 #include "arm/sve_sorting_fp32hack_approx.h"
+
+#include "arm/sve_getmink_fp32.h"
 #endif
 
 namespace smalltopk {
@@ -182,12 +184,14 @@ static void init_hook_aarch64() {
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32;
+            current_get_min_k_fp32_hook = get_min_k_fp32_sve;
         } else {
             if (verbosity > 0) {
                 printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32 kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32;
+            current_get_min_k_fp32_hook = get_min_k_fp32_sve;
         }
     } else {
         if (verbosity > 0) {

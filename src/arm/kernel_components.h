@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <arm_sve.h>
+
 #include "../utils/macro_repeat_define.h"
 
 

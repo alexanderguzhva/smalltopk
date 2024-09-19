@@ -5,8 +5,6 @@
 #include <limits>
 #include <type_traits>
 
-#include "sve_vec.h"
-
 #include "kernel_components.h"
 #include "sorting_networks.h"
 
@@ -17,6 +15,32 @@ namespace smalltopk {
 
 namespace {
 
+template<typename DistancesEngineT, typename IndicesEngineT>
+void cmpxchg(
+    typename DistancesEngineT::simd_type& __restrict a_d, 
+    typename IndicesEngineT::simd_type& __restrict a_i, 
+    typename DistancesEngineT::simd_type& __restrict b_d, 
+    typename IndicesEngineT::simd_type& __restrict b_i
+) {
+    using distances_type = typename DistancesEngineT::simd_type;
+    using indices_type = typename IndicesEngineT::simd_type;
+
+    //
+    const auto dis_mask = DistancesEngineT::pred_all();
+
+    const auto cmp_d = DistancesEngineT::compare_le(dis_mask, a_d, b_d);
+
+    const distances_type min_d_new = DistancesEngineT::select(cmp_d, b_d, a_d);
+    const indices_type min_i_new = IndicesEngineT::select(cmp_d, b_i, a_i);
+
+    const distances_type max_d_new = DistancesEngineT::select(cmp_d, a_d, b_d);
+    const indices_type max_i_new = IndicesEngineT::select(cmp_d, a_i, b_i);
+
+    a_d = min_d_new;
+    a_i = min_i_new;
+    b_d = max_d_new;
+    b_i = max_i_new;                    
+};
 
 #define DECLARE_SORTING_PARAM(NX)   \
     const typename DistancesEngineT::simd_type sorting_d_##NX,  \
@@ -207,26 +231,6 @@ bool kernel_sorting_pre_k(
 
         // apply sorting networks
         {
-            // Compare-and-exchange for a_d and b_d,
-            //   based on a_d <=> b_d comparison.
-            auto cmpxchg = [&dis_mask](
-                distances_type& a_d, indices_type& a_i,
-                distances_type& b_d, indices_type& b_i
-            ) {
-                const auto cmp_d = DistancesEngineT::compare_le(dis_mask, a_d, b_d);
-
-                const distances_type min_d_new = DistancesEngineT::select(cmp_d, b_d, a_d);
-                const indices_type min_i_new = IndicesEngineT::select(cmp_d, b_i, a_i);
-
-                const distances_type max_d_new = DistancesEngineT::select(cmp_d, a_d, b_d);
-                const indices_type max_i_new = IndicesEngineT::select(cmp_d, a_i, b_i);
-
-                a_d = min_d_new;
-                a_i = min_i_new;
-                b_d = max_d_new;
-                b_i = max_i_new;
-            };
-
             // introduce indices for candidates.
             // candidate distances are dp_i_NX
 
@@ -241,6 +245,8 @@ bool kernel_sorting_pre_k(
 
 
             // pick and apply an appropriate sorting network
+
+            static constexpr auto comparer = cmpxchg<DistancesEngineT, IndicesEngineT>;
 
 #define ADD_SORTING_PAIR(NX) sorting_d_##NX, sorting_i_##NX,
 #define ADD_CANDIDATE_PAIR(NX) dp_i_##NX, ids_candidate_##NX,
@@ -260,10 +266,10 @@ bool kernel_sorting_pre_k(
                 //     cmpxchg
                 // );
 #define DISPATCH_PARTIAL_SN(SRT_K, SRT_N) \
-                PartialSortingNetwork<SRT_K, SRT_N>::template sort<DistancesEngineT, IndicesEngineT, decltype(cmpxchg)>( \
+                PartialSortingNetwork<SRT_K, SRT_N>::template sort<DistancesEngineT, IndicesEngineT, decltype(comparer)>( \
                     REPEAT_1D(ADD_SORTING_PAIR, SRT_K)  \
                     REPEAT_1D(ADD_CANDIDATE_PAIR, SRT_N)    \
-                    cmpxchg \
+                    comparer \
                 );
 
 #define DISPATCH_SORTING(SORTING_K)                 \

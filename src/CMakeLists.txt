@@ -164,6 +164,19 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
 
         list(APPEND SMALLTOPK_SRCS arm/sve_sorting_fp32hack_approx_dummy.cpp)
     endif()
+
+    # getmink FP32 
+    if (SMALLTOPK_ENABLE_GETMINK_FP32)
+        message(STATUS "including fp32 getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS arm/sve_getmink_fp32.cpp)
+        # set_source_files_properties(arm/sve_getmink_fp32.cpp PROPERTIES COMPILE_FLAGS "")
+    else()
+        message(STATUS "not including fp32 getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS arm/sve_getmink_fp32_dummy.cpp)
+    endif()
+
 endif()
 
 

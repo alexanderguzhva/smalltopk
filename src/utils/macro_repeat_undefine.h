@@ -36,6 +36,43 @@
 
 
 //
+#undef REPEAT_NP1_1
+#undef REPEAT_NP1_2
+#undef REPEAT_NP1_3
+#undef REPEAT_NP1_4
+#undef REPEAT_NP1_5
+#undef REPEAT_NP1_6
+#undef REPEAT_NP1_7
+#undef REPEAT_NP1_8
+#undef REPEAT_NP1_9
+#undef REPEAT_NP1_10
+#undef REPEAT_NP1_11
+#undef REPEAT_NP1_12
+#undef REPEAT_NP1_13
+#undef REPEAT_NP1_14
+#undef REPEAT_NP1_15
+#undef REPEAT_NP1_16
+#undef REPEAT_NP1_17
+#undef REPEAT_NP1_18
+#undef REPEAT_NP1_19
+#undef REPEAT_NP1_20
+#undef REPEAT_NP1_21
+#undef REPEAT_NP1_22
+#undef REPEAT_NP1_23
+#undef REPEAT_NP1_24
+#undef REPEAT_NP1_25
+#undef REPEAT_NP1_26
+#undef REPEAT_NP1_27
+#undef REPEAT_NP1_28
+#undef REPEAT_NP1_29
+#undef REPEAT_NP1_30
+#undef REPEAT_NP1_31
+#undef REPEAT_NP1_32
+
+#undef REPEAT_NP1_1D
+
+
+//
 #undef REPEATR_1
 #undef REPEATR_2
 #undef REPEATR_3
