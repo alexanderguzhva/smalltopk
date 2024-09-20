@@ -105,7 +105,10 @@ bool kernel_getmink(
 
     ////////////////////////////////////////////////////////////////////////
     // main loop
-    const size_t ny_16 = (ny / (N_REGISTERS_PER_LOOP * dis_simd_width)) * (N_REGISTERS_PER_LOOP * dis_simd_width);
+    const size_t ny_16 = 
+        ((ny + (N_REGISTERS_PER_LOOP * dis_simd_width) - 1) 
+            / (N_REGISTERS_PER_LOOP * dis_simd_width)) 
+            * (N_REGISTERS_PER_LOOP * dis_simd_width);
 
     indices_type offset_base = IndicesEngineT::staircase();
 
@@ -114,9 +117,7 @@ bool kernel_getmink(
         // apply sorting networks
         {
             // introduce indices for candidates.
-            // candidate distances are dp_i_NX
 
-            // auto ids_candidate_0 = IndicesEngineT::set1(j + 0);
 #define INTRO_IDS_CANDIDATE(NX) \
             indices_type ids_candidate_##NX = offset_base; \
             offset_base = IndicesEngineT::add(dis_mask, offset_base, IndicesEngineT::set1(dis_simd_width));
@@ -127,16 +128,44 @@ bool kernel_getmink(
 #undef INTRO_IDS_CANDIDATE
 
 
-            // todo: add partial load
-
-            // introduce values
+            // introduce distances for candidates.
+    
 #define INTRO_DIS_CANDIDATE(NX) \
-            distances_type dis_candidate_##NX = DistancesEngineT::load(dis_mask, src_dis + j + NX * dis_simd_width);
+            distances_type dis_candidate_##NX;
 
             // MAX_N_REGISTERS_PER_LOOP
             REPEAT_1D(INTRO_DIS_CANDIDATE, 8)
 
 #undef INTRO_DIS_CANDIDATE
+
+            // load
+            if (j + dis_simd_width * N_REGISTERS_PER_LOOP <= ny) {
+                // regular load: all distances are fully loaded
+
+#define LOAD_DIS_CANDIDATE(NX) \
+                dis_candidate_##NX = DistancesEngineT::load(dis_mask, src_dis + j + NX * dis_simd_width);
+
+                // MAX_N_REGISTERS_PER_LOOP
+                REPEAT_1D(LOAD_DIS_CANDIDATE, 8)
+
+#undef LOAD_DIS_CANDIDATE
+
+            } else {
+                // partial load: only some of distances are available
+                const distances_type maxv = DistancesEngineT::max_value();
+
+#define PARTIAL_LOAD_DIS_CANDIDATE(NX) \
+                { \
+                    const auto tmp_mask = IndicesEngineT::whilelt(j + dis_simd_width * NX, ny); \
+                    const distances_type tmp_dis = DistancesEngineT::load(tmp_mask, src_dis + j + NX * dis_simd_width); \
+                    dis_candidate_##NX = DistancesEngineT::select(tmp_mask, maxv, tmp_dis); \
+                }
+
+                // MAX_N_REGISTERS_PER_LOOP
+                REPEAT_1D(PARTIAL_LOAD_DIS_CANDIDATE, 8)
+
+#undef PARTIAL_LOAD_DIS_CANDIDATE
+            }
 
 
             // pick and apply an appropriate sorting network
@@ -217,7 +246,7 @@ bool kernel_getmink(
 #define MOVE_LANES(NX, NP1)  \
         if (NX + 1 < N_MAX_LEVELS) {    \
             sorting_d_##NX = DistancesEngineT::select(  \
-                mindmask,   \ 
+                mindmask,   \
                 sorting_d_##NX, \
                 sorting_d_##NP1 \
             );  \

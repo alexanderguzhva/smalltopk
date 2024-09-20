@@ -22,6 +22,10 @@ struct vec_f32x16 {
         return _mm512_loadu_ps(src);
     }
 
+    static simd_type mask_load(const __mmask16 mask, const simd_type default_v, const scalar_type* const __restrict src) {
+        return _mm512_mask_loadu_ps(default_v, mask, src);
+    }
+
     static void store(scalar_type* const __restrict dst, const simd_type a) {
         _mm512_storeu_ps(dst, a);
     }
@@ -80,6 +84,17 @@ struct vec_f32x16 {
 
     static scalar_type reduce_min(const simd_type a) {
         return _mm512_reduce_min_ps(a);
+    }
+
+    static __mmask16 whilelt(const size_t a, const size_t b) {
+        // inoptimal
+        if (a + SIMD_WIDTH < b) {
+            return 0b1111111111111111;
+        } else if (a >= b) {
+            return 0b0000000000000000;
+        } else {
+            return ((1U << (b - a)) - 1);
+        }
     }
 };
 

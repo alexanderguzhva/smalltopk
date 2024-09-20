@@ -84,7 +84,10 @@ bool kernel_getmink(
 
     ////////////////////////////////////////////////////////////////////////
     // main loop
-    const size_t ny_16 = (ny / (N_REGISTERS_PER_LOOP * DistancesEngineT::SIMD_WIDTH)) * (N_REGISTERS_PER_LOOP * DistancesEngineT::SIMD_WIDTH);
+    const size_t ny_16 = 
+        ((ny + (N_REGISTERS_PER_LOOP * DistancesEngineT::SIMD_WIDTH) - 1) 
+            / (N_REGISTERS_PER_LOOP * DistancesEngineT::SIMD_WIDTH)) 
+            * (N_REGISTERS_PER_LOOP * DistancesEngineT::SIMD_WIDTH);
 
     indices_type offset_base = IndicesEngineT::staircase();
 
@@ -98,15 +101,22 @@ bool kernel_getmink(
 
         // introduce values
         distances_type dis_candidate[N_REGISTERS_PER_LOOP];
-        
-        // if () [[likely]] {
+
+        // load
+        if (j + DistancesEngineT::SIMD_WIDTH * N_REGISTERS_PER_LOOP <= ny) [[likely]] {
+            // regular load: all distances are fully loaded
             for (size_t ny_k = 0; ny_k < N_REGISTERS_PER_LOOP; ny_k++) {
                 dis_candidate[ny_k] = DistancesEngineT::load(src_dis + j + ny_k * DistancesEngineT::SIMD_WIDTH);
             }
-        // } else {
+        } else {
+            // partial load: only some of distances are available
+            const distances_type maxv = DistancesEngineT::max_value();
 
-        // }
-
+            for (size_t ny_k = 0; ny_k < N_REGISTERS_PER_LOOP; ny_k++) {
+                const auto mask = DistancesEngineT::whilelt(j + ny_k * DistancesEngineT::SIMD_WIDTH, ny);
+                dis_candidate[ny_k] = DistancesEngineT::mask_load(mask, maxv, src_dis + j + ny_k * DistancesEngineT::SIMD_WIDTH);
+            }
+        }
 
         // sorting network
 

@@ -256,6 +256,10 @@ struct vec_u32 {
     static uint64_t mask_popcount(const svbool_t mask) {
         return svcntp_b32(svptrue_b32(), mask);
     }
+
+    static svbool_t whilelt(const size_t a, const size_t b) {
+        return svwhilelt_b32(a, b);
+    }
 };
 
 
