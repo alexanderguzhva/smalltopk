@@ -15,6 +15,8 @@ Tested on:
 
 Please refer to the following [section](article/main5.md#building-the-library).
 
+Overall, the only used external library is `OpenMP` for a very basic multithreading of a single block. Thus, `OpenMP` can be easily replaced with any other threading facility, including the one from the standard C++ library (which I did not use, bcz I was not sure about a possible thread pool under the hood).
+
 # Integration with FAISS
 
 Please refer to the following [section](article/main5.md#integration-with-faiss).
@@ -23,3 +25,6 @@ FAISS library can be found on [github](https://github.com/facebookresearch/faiss
 
 Benchmarks for [Product Quantizer](article/main5.md#benchmarks-for-product-quantizater) and [Product Residual Quantizer](article/main5.md#benchmarks-for-product-residual-quantizer).
 
+# Unit tests
+
+Unit tests use reworked yet borrowed code from FAISS.

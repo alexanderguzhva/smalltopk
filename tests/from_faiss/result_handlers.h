@@ -1,3 +1,5 @@
+// reworked from faiss
+
 #pragma once
 
 #include <cstddef>

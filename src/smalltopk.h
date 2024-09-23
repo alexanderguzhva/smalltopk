@@ -8,7 +8,7 @@
 
 #define SMALLTOPK_EXPORT __attribute__((__visibility__("default")))
 
-// performs a knn-search.
+// performs a brute-force search.
 // returns whether the operation was performed or not.
 // it is expected that:
 // * nx is large and ny is relatively small.

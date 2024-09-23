@@ -689,7 +689,7 @@ In my experiments, I collected a list of sorting networks produced with `SorterH
 Overall, I've found it optimal to use batches of `N = 8` candidates, which means 8 SIMD registers for distances and 8 SIMD registers for indices. The reasons are that:
 1. The number of SIMD registers is limited (32 for AVX512 and SVE), so processing using higher `N` leads to excessive register spilling, which degrades the performance,
 2. The number of `compare-exchange` operations for one `merge-16-into-K` vs two `merge-8-into-K` is negligible
-3. The search of sorting networks with `N = 8` is much faster than with `N = 16`.
+3. The search of appropriate sorting networks for `N = 8` is much faster than for `N = 16`.
 
 ### Sorting networks vs Naive SIMD solution
 
@@ -780,7 +780,9 @@ Alternatively, it is possible to skip using an additional sorting network at all
         n_worthy_right += (cmp_right == 0) ? 0 : 1;
     }
 
-    const __m512* first_ptr = worthy_dis + n_worthy_left + 1;
+    // here are the worthy candidates to process:
+    const __m512* first_dis_ptr = worthy_dis + n_worthy_left + 1;
+    const __m512i* first_ids_ptr = worthy_ids + n_worthy_left + 1;
     const size_t n_worthy = (n_worthy_right - 8) + (7 - n_worthy_left);
 
     // merge n_worthy candidates into K tracked best
@@ -827,7 +829,7 @@ A recall rate is almost indistinguishable for all 4 cases (0.999x recall rate in
 
 I've also analyzed schemes, which contain a `double elimination` idea. Basically, it is about keeping unworthy candidates in a separate pool of candidates in order to possibly promote them to worthy again. None of the ideas were worthy enough from the performance point of view.
 
-Real-world benchmarks will be provided later.
+Real-world benchmarks will be provided down below.
 
 ### Done with sorting networks
 
@@ -1003,7 +1005,7 @@ This code compiles into 2 instructions (one `min` and one `max`) only.
 Surprisingly to me, MIN+MAX code is faster (for both Intel Xeon 4th Gen and AMD Zen 4) than the previous CMP+BLEND based one, but I'm not fully sure why. Technically, for an Intel CPU, AVX512 blend instruction can be executed on both port 0 and 5, and CMP runs on port 5. While MIN/MAX instructions can be executed on port 0 only. Very roughly speaking, a sorting network with 32 comparisons require 64 cycles to be executed on port 0 for MIN+MAX code, but about 42 cycles for ports 0+5 CMP+BLEND code. So, a machine code analyzer shows a lower total number of cycles for a CMP+BLEND-based sorting network vs a MIN/MAX-based one. But on practice, MIN/MAX option is faster. 
 
 My possibly wrong guesses about the reason:
-* maybe, there is a hidden cost of transferring data between ports 0 and 5,
+* maybe, there is a hidden cost of transferring the data between ports 0 and 5 (as mentioned in `Bypass Delay Between Producer and Consumer Micro-ops` table in Intel manual (?)),
 * maybe, there are some hidden dispatching costs: each MIN and MAX instruction is encoded with exactly 4 (?) bytes of code, while CMP+BLEND code is a mix of instructions of various lengths. According to `uiCA`, dispatching is not a bottleneck, but it may still affect the results.
 * maybe, port 0 is faster than port 5, which does not look wrong. At least, AVX512 instructions on port 0 are a result of a port fusion of ports 0 and 1, while port 5 runs on its own. On the other hand, this would be reflected in various `instruction latency` tables and a C++ compiler would know this.
 
@@ -1042,7 +1044,7 @@ In theory, a different approach that uses `permutexvar`s over transposed SIMD re
 
 TODO: write a code snippet
 
-The required functionality is provided by `get_min_k_fp32()` function.
+The required functionality is provided by `get_min_k()` function.
 ``` C++
 bool get_min_k(
     const float* const __restrict src_dis,
@@ -1086,6 +1088,14 @@ bool get_min_k(
     return true;
 }
 ```
+
+TODO: The proposed implementation is the following: 
+```C++
+```
+
+TODO: Additionally, it can be way improved if the processing multiple queries is needed. This is achieved by using `gather`/`scatter` instructions.
+
+TODO-2: This way can be used for large k values for a regular brute-force search, instead of the one provided above.
 
 Our sorting networks based implementation is approximate, meaning that it may lose certain good candidates because of a wrong luck. 
 
@@ -1275,7 +1285,7 @@ I recommend using `clang` for x86 code and `gcc` for ARM SVE (see below).
 
 The most promising way to get the fastest machine code possible is to have a fully templatized C++ code and to rely on a C++ compiler to handle all the optimizations (unless a compiler gets crazy because of too hardcore search depth during AST / register allocation analysis). It is possible to apply the same approach for our case. So, we get the total number of kernels based on a cartesian product of every top-k value (1..24), of every dim (1..32), of every data type (fp32, fp16, fp32hack) and of every possible hardware instruction set (AVX512, AMX, ...). In our case, this fully-templatizing approach leads to a 10 MB+ sized library, which requires minutes of compilation time.
 
-I've decided to trade-off about several percents (5%?) of the performance for seconds of the compilation time and a compact library (explained below). It is very simple to transform provided kernels into a zillion of specialized kernels, each serving its own use case and being a bit faster than a general-purpose kernel.
+I've decided to trade-off about several percents (5%?) of the performance for seconds of the compilation time and a compact library (explained [below](#calling-conventions-and-a-universal-kernel)). It is very simple to transform provided kernels into a zillion of specialized kernels, each serving its own use case and being a bit faster than a general-purpose kernel.
 
 ## Dependencies
 
@@ -1399,7 +1409,7 @@ As of today, it is not possible to reliably define our own custom calling conven
         case 32: compute_something<32>(...); break;
     }
 ```
-It leads to a BIG kernel, but surprisingly (!) it performs with almost no performance regression, compared to a fully templatized kernel for a fixed size of parameters. The only price has to be paid is the increased size of a compiled binary. Also, SIMD register allocations may be inoptimal, which can be somewhat fixed with `-march=native -mtune=native` C++ compiler flags.
+It leads to a BIG kernel, but surprisingly (!) it performs with almost no performance regression, compared to a fully templatized kernel for a fixed size of parameters. The only price has to be paid is the increased size of a compiled binary. Also, SIMD register allocations may be inoptimal, which can be somewhat fixed with `-march=native -mtune=native` C++ compiler flags (`-mtune` does the job, it seems).
 
 So, the template of the `universal` kernel that is used in the library follows the pattern:
 ``` C++
@@ -1530,10 +1540,12 @@ float sum(const float* x, const size_t n) {
 }
 ```
 
-This library uses the following approach:
+This library uses the following approach for `brute-force search` kernels:
 * avoid a dedicated code for masking, 
-* avoid `svwhilelt` inside a regular kernel, 
+* avoid `svwhilelt` inside a regular kernel (`sum_16` and `sum_w` in the given example), 
 * allocate an additional buffer for leftovers and apply a regular kernel to it.
+
+The library's `get_min_k()` kernels are a different story, because they are tiny, they cannot use temporary buffers, thus they benefit from a completely opposite approach (do use masking, do use `svwhilelt`, etc.).
 
 ## Integration with FAISS
 
@@ -1549,7 +1561,7 @@ The way of integrating with `PQ` is the following:
         std::make_unique<smalltopk::IndexFlatL2SmallTopKFactory>(kernel);
     pq.assign_index = index_assign_factory->operator()(pq.dsub);
 
-    // don't forget to synchronize the lifetime of `assign_index` field, 
+    // don't forget to take care of the lifetime of `assign_index` field, 
     //   because ProductQuantizer does not own this pointer 
 ```
 or
@@ -1561,7 +1573,7 @@ or
 
     pq.assign_index = topk_index.get();
 
-    // don't forget to synchronize the lifetime of `assign_index` field, 
+    // don't forget to take care of the lifetime of `assign_index` field, 
     //   because ProductQuantizer does not own this pointer 
 ```
 
@@ -1576,7 +1588,7 @@ The way of integrating with `PRQ` is the following:
         rq->assign_index_factory = index_assign_factory.get();
     }
 
-    // don't forget to synchronize the lifetime of `index_assign_factory` field, 
+    // don't forget to take care of the lifetime of `index_assign_factory` field, 
     //   because ResidualQuantizer does not own this pointer 
 ```
 
@@ -1584,7 +1596,7 @@ The way of integrating with `PRQ` is the following:
 
 Intel Xeon 4th gen vs AMD Zen 4 vs Graviton 3
 
-All benchmarks were conducted on cloud machines, which is a PITA. For an ideal reproducible results, one needs to get a dedicated machine, turn off hyper-threading in BIOS, lock the frequency, disable background processes, etc. (more details [here](https://rigtorp.se/low-latency-guide/)) In our Gray Cloudy Reality we have to run a baseline test and then immediately a candidate one, maybe several times, and we need to make sure that baseline results are somewhat reproducible. 
+All benchmarks were conducted on cloud machines, which is a PITA. For ideal reproducible results, one needs to get a dedicated machine, turn off hyper-threading in BIOS, lock the frequency, disable background processes, etc. (more details [here](https://rigtorp.se/low-latency-guide/)). In our Gray Cloudy Reality we have to run a baseline test and then immediately a candidate one, maybe several times, and we need to make sure that baseline results are somewhat reproducible. 
 
 So, all results contain some noise, which is related to the measurements conducted on cloud-based machines.
 
@@ -1596,8 +1608,8 @@ Both functions are used in FAISS for performing k-means based clustering.
 
 Our experiments were conducted on following AWS machines:
 * M7i.2xlarge, Intel(R) Xeon(R) Platinum 8488C (see [wiki](https://en.wikipedia.org/wiki/Sapphire_Rapids)), 4c/8t with 32 GB of RAM. The provided results are for `clang-19` C++ compiler. BLAS evaluations were performed using [Intel MKL](https://en.wikipedia.org/wiki/Math_Kernel_Library) 2024.0 version.
-* M7a.2xlarge, AMD EPYC 9R14 (google-able), 4c/8t with 32 GB of RAM. The provided results are for `clang-19` compiler. 
-* M7g.xlarge, AWS Graviton 3 (see [wiki](https://en.wikipedia.org/wiki/AWS_Graviton)), 4t with 16 GB of RAM. The provided results are for `gcc-12` compiler (`clang-19` was horrible compared to `gcc`, and `gcc-14` was as same as fast as `gcc-12`)
+* M7a.2xlarge, AMD EPYC 9R14 (google-able, but no dedicated web pages), 4c/8t with 32 GB of RAM. The provided results are for `clang-19` compiler. 
+* M7g.xlarge, AWS Graviton 3 (see [wiki](https://en.wikipedia.org/wiki/AWS_Graviton)), 4t with 16 GB of RAM. The provided results are for `gcc-12` compiler (`clang-19` was horrible compared to `gcc`, and `gcc-14` was as same as fast as `gcc-12`). Twice as less threads as x86-based machines, but I'm assuming that it changes the total running time, but not the speedup.
 
 All benchmarks were performed using [mimalloc](https://github.com/microsoft/mimalloc), both on x86 and ARM, in order to reduce a possible TLB cache miss overhead:
 ```bash
@@ -1672,9 +1684,9 @@ Very competitive vs Intel for fp32hack kernel.
 
 ### Comments about AWS Graviton 3
 
-It was run on 4t vs 8t for x86 ones. 
+It was run on 4t vs 8t for x86 ones, so the needed time would be 2x less if run on M7g.xlarge machine.
 
-Overall, AWS Graviton 3 is not that fast, compared to x86, primarily because its SIMD width is 256 bit (compared to AVX512). Still, our ARM SVE code for AWS Graviton 3 produces up to 10x performance improvement (mostly, 7x), compared to baseline versions.
+Overall, AWS Graviton 3 is not that fast, compared to x86, primarily because its SIMD width is 256 bit (compared to AVX512). Still, our ARM SVE code for AWS Graviton 3 produces up to 10x performance improvement (mostly, 7x), compared to baseline versions. It can be estimated that 512-bit SIMD Graviton 3 would provide 20x (mostly, 14x) performance improvement.
 
 TODO: verify improvement
 
