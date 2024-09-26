@@ -180,16 +180,16 @@ bool kernel_getmink(
         );
 
         // store
-        if (n_extracted + n_new > k) {
-            n_new = k - n_extracted;
-        }
-
         if (n_new == 1) [[likely]] {
             out_dis[n_extracted] = static_cast<float>(min_distance_v);
 
             IndicesEngineT::compress_store_1_as_i32(
                 out_ids + n_extracted, mindmask, saved_indices);
         } else {
+            if (n_extracted + n_new > k) {
+                n_new = k - n_extracted;
+            }
+
             for (size_t q = 0; q < n_new; q++) {
                 out_dis[n_extracted + q] = static_cast<float>(min_distance_v);
             }
