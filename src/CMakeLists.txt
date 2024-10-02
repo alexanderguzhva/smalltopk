@@ -17,6 +17,7 @@ OPTION(SMALLTOPK_ENABLE_AVX512_FP32HACK_AMX "Whether to enable fp32hack knn kern
 OPTION(SMALLTOPK_ENABLE_FP32HACK_APPROX "Whether to enable fp32hack knn kernel with 'fixed number of worthy candidates' approach" OFF)
 
 OPTION(SMALLTOPK_ENABLE_GETMINK_FP32 "Whether to enable fp32 getmink kernel" OFF)
+OPTION(SMALLTOPK_ENABLE_GETMINK_FP32HACK "Whether to enable fp32hack getmink kernel" OFF)
 
 # files
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
@@ -105,6 +106,18 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
         message(STATUS "not including fp32 getmink kernel")
 
         list(APPEND SMALLTOPK_SRCS x86/avx512_getmink_fp32_dummy.cpp)
+    endif()
+
+    # getmink FP32 
+        if (SMALLTOPK_ENABLE_GETMINK_FP32HACK)
+        message(STATUS "including fp32hack getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS x86/avx512_getmink_fp32hack.cpp)
+        set_source_files_properties(x86/avx512_getmink_fp32hack.cpp PROPERTIES COMPILE_FLAGS "-mavx512f -mavx512bw -mavx512vl -mavx512dq -mavx512cd")
+    else()
+        message(STATUS "not including fp32hack getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS x86/avx512_getmink_fp32hack_dummy.cpp)
     endif()
 
 elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")

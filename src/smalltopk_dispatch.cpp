@@ -24,6 +24,7 @@ extern "C" {
 #include "x86/avx512_sorting_fp32hack_approx.h"
 
 #include "x86/avx512_getmink_fp32.h"
+#include "x86/avx512_getmink_fp32hack.h"
 #endif
 
 #ifdef __aarch64__
@@ -94,6 +95,7 @@ static void init_hook_x86() {
 
     if (env_kernel == "fp16" || env_kernel == "2") {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp16;
+        current_get_min_k_fp32_hook = get_min_k_fp32_avx512;
 
         if (verbosity > 0) {
             printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp16 kernel as a default one\n");
@@ -104,6 +106,7 @@ static void init_hook_x86() {
 
     if (env_kernel == "fp32hack" || env_kernel == "hack" || env_kernel == "3") {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32hack;
+        current_get_min_k_fp32_hook = get_min_k_fp32_avx512;
 
         if (verbosity > 0) {
             printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack kernel as a default one\n");
@@ -116,6 +119,7 @@ static void init_hook_x86() {
         env_kernel == "fp32hack_amx" || env_kernel == "hack_amx" || 
         env_kernel == "4") {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32hack_amx;
+        current_get_min_k_fp32_hook = get_min_k_fp32_avx512;
 
         if (verbosity > 0) {
             printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack_amx kernel as a default one\n");
@@ -126,6 +130,7 @@ static void init_hook_x86() {
 
     if (env_kernel == "fp32hack_approx" || env_kernel == "hack_approx" || env_kernel == "5") {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp32hack_approx;
+        current_get_min_k_fp32_hook = get_min_k_fp32hack_avx512;
 
         if (verbosity > 0) {
             printf("smalltopk uses knn_L2sqr_fp32_avx512_sorting_fp32hack_approx kernel as a default one\n");
@@ -166,18 +171,21 @@ static void init_hook_aarch64() {
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp16;
+            current_get_min_k_fp32_hook = get_min_k_fp32_sve;
         } else if (env_kernel == "fp32hack" || env_kernel == "hack" || env_kernel == "3") {
             if (verbosity > 0) {
                 printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32hack kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32hack;
+            current_get_min_k_fp32_hook = get_min_k_fp32_sve;
         } else if (env_kernel == "fp32hack_approx" || env_kernel == "hack_approx" || env_kernel == "5") {
             if (verbosity > 0) {
                 printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32hack_approx kernel as a default one\n");
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32hack_approx;
+            current_get_min_k_fp32_hook = get_min_k_fp32_sve;
         } else if (env_kernel == "fp32" || env_kernel == "1") {
             if (verbosity > 0) {
                 printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32 kernel as a default one\n");
@@ -316,7 +324,28 @@ bool get_min_k_fp32(
     int32_t* const __restrict ids,
     const GetKParameters* const __restrict params
 ) {
+#ifdef __aarch64__
     return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
+#endif
+
+#ifdef __x86_64__
+    // a default kernel
+    if (params == nullptr) {
+        return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
+    }
+
+    switch (params->kernel) {
+        case 1:
+            return smalltopk::get_min_k_fp32_avx512(src_dis, n, k, dis, ids, params);
+        case 3:
+            return smalltopk::get_min_k_fp32hack_avx512(src_dis, n, k, dis, ids, params);
+        case 0:
+        default:
+            return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
+    }
+
+    return false;
+#endif
 }
 
 // init hook

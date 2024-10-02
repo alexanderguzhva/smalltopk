@@ -162,6 +162,10 @@ struct vec_u32x16 {
         return _mm512_set1_epi32(v);
     }
 
+    static simd_type add(const simd_type a, const simd_type b) {
+        return _mm512_add_epi32(a, b);
+    }
+
     static void store(scalar_type* const __restrict dst, const simd_type a) {
         _mm512_storeu_si512((__m256i*)dst, a);
     }

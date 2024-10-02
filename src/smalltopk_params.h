@@ -19,6 +19,10 @@ typedef struct {
 } KnnL2sqrParameters;
 
 typedef struct {
+    // 0 - default. Can be overriden via 'SMALLTOPK_KERNEL' env variable.
+    // 1 - fp32
+    // 3 - fp32 hack
+    uint32_t kernel;
     // Number of levels for tracing topk.
     //   Higher value, higher precision, less performance.
     // 0 for same as k
