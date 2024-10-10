@@ -99,11 +99,20 @@ void offload(
     float* const __restrict dis,
     output_ids_type* const __restrict ids
 ) {
-    for (size_t nx_k = 0; nx_k < NX_POINTS; nx_k++) {
-        for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
-            dis[nx_k * SORTING_K + i_k] = final_d[nx_k + i_k * NX_POINTS];
-            ids[nx_k * SORTING_K + i_k] = 
-                static_cast<output_ids_type>(final_i[nx_k + i_k * NX_POINTS]);
+    if (dis != nullptr) {
+        for (size_t nx_k = 0; nx_k < NX_POINTS; nx_k++) {
+            for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
+                dis[nx_k * SORTING_K + i_k] = final_d[nx_k + i_k * NX_POINTS];
+            }
+        }
+    }
+
+    if (ids != nullptr) {
+        for (size_t nx_k = 0; nx_k < NX_POINTS; nx_k++) {
+            for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
+                ids[nx_k * SORTING_K + i_k] = 
+                    static_cast<output_ids_type>(final_i[nx_k + i_k * NX_POINTS]);
+            }
         }
     }
 }

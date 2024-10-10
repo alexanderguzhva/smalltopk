@@ -19,39 +19,23 @@ void transpose(
 ) {
     const auto dis_simd_width = DistancesEngineT::width();
 
+    auto transpose_lambda = [&]<size_t WIDTH>() {
+        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
+            for (size_t dd = 0; dd < DIM; dd++) {
+                output[dd * WIDTH + nx_k] = x[nx_k * DIM + dd];
+            }
+        }
+    };
+
     // cover the most typical cases
     if (dis_simd_width == 4) {
-        constexpr size_t WIDTH = 4;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t dd = 0; dd < DIM; dd++) {
-                output[dd * WIDTH + nx_k] = x[nx_k * DIM + dd];
-            }
-        }
+        transpose_lambda.template operator()<4>();
     } else if (dis_simd_width == 8) {
-        constexpr size_t WIDTH = 8;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t dd = 0; dd < DIM; dd++) {
-                output[dd * WIDTH + nx_k] = x[nx_k * DIM + dd];
-            }
-        }
+        transpose_lambda.template operator()<8>();
     } else if (dis_simd_width == 16) {
-        constexpr size_t WIDTH = 16;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t dd = 0; dd < DIM; dd++) {
-                output[dd * WIDTH + nx_k] = x[nx_k * DIM + dd];
-            }
-        }
+        transpose_lambda.template operator()<16>();
     } else if (dis_simd_width == 32) {
-        constexpr size_t WIDTH = 32;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t dd = 0; dd < DIM; dd++) {
-                output[dd * WIDTH + nx_k] = x[nx_k * DIM + dd];
-            }
-        }
+        transpose_lambda.template operator()<32>();
     } else {
         // a general-purpose case
         for (size_t nx_k = 0; nx_k < dis_simd_width; nx_k++) {
@@ -215,55 +199,51 @@ void offload(
     output_ids_type* const __restrict ids,
     const uint64_t dis_simd_width
 ) {
+    auto offload_lambda = [&]<size_t WIDTH>() {
+        if (dis != nullptr) {
+            for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
+                for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
+                    dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
+                }
+            }
+        }
+
+        if (ids != nullptr) {
+            for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
+                for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
+                    ids[nx_k * SORTING_K + i_k] = 
+                        static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
+                }
+            }
+        }
+    };
+
     // transpose output results
     // cover the most typical cases
     if (dis_simd_width == 4) {
-        constexpr size_t WIDTH = 4;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
-                dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = 
-                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
-            }
-        }
+        offload_lambda.template operator()<4>();
     } else if (dis_simd_width == 8) {
-        constexpr size_t WIDTH = 8;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
-                dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = 
-                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
-            }
-        }
+        offload_lambda.template operator()<8>();
     } else if (dis_simd_width == 16) {
-        constexpr size_t WIDTH = 16;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
-                dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = 
-                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
-            }
-        }
+        offload_lambda.template operator()<16>();
     } else if (dis_simd_width == 32) {
-        constexpr size_t WIDTH = 32;
-
-        for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
-            for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
-                dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = 
-                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
-            }
-        }
+        offload_lambda.template operator()<32>();
     } else {
         // a general-purpose case
-        for (size_t nx_k = 0; nx_k < dis_simd_width; nx_k++) {
-            for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
-                dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * dis_simd_width];
-                ids[nx_k * SORTING_K + i_k] = 
-                    static_cast<output_ids_type>(output_i[nx_k + i_k * dis_simd_width]);
+        if (dis != nullptr) {
+            for (size_t nx_k = 0; nx_k < dis_simd_width; nx_k++) {
+                for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
+                    dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * dis_simd_width];
+                }
+            }
+        }
+
+        if (ids != nullptr) {
+            for (size_t nx_k = 0; nx_k < dis_simd_width; nx_k++) {
+                for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
+                    ids[nx_k * SORTING_K + i_k] = 
+                        static_cast<output_ids_type>(output_i[nx_k + i_k * dis_simd_width]);
+                }
             }
         }
     }
