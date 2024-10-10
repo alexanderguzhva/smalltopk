@@ -76,6 +76,29 @@ int32_t verbosity = 0;
 //
 #ifdef __x86_64__
 static void init_hook_x86() {
+    if (verbosity > 1) {
+        printf(
+            "smalltopk: is_avx512f_supported = %d\n"
+            "smalltopk: is_avx512cd_supported = %d\n"
+            "smalltopk: is_avx512bw_supported = %d\n"
+            "smalltopk: is_avx512dq_supported = %d\n"
+            "smalltopk: is_avx512vl_supported = %d\n"
+            "smalltopk: is_avx512fp16_supported = %d\n"
+            "smalltopk: is_avx512bf16_supported = %d\n"
+            "smalltopk: is_avx512amxbf16_supported = %d\n"
+            "smalltopk: is_avx512_cap_skylake = %d\n",
+            InstructionSet::get_instance().is_avx512f_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512cd_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512bw_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512dq_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512vl_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512fp16_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512bf16_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512amxbf16_supported ? 1 : 0,
+            InstructionSet::get_instance().is_avx512_cap_skylake ? 1 : 0
+        );
+    }
+
     std::string env_kernel = get_env("SMALLTOPK_KERNEL").value_or("");
     if (env_kernel == "none" || env_kernel == "disabled" || env_kernel == "off") {
         // disabled
@@ -86,14 +109,12 @@ static void init_hook_x86() {
         return;
     }
 
-    init_amx();
+    if (InstructionSet::get_instance().is_avx512amxbf16_supported) {
+        init_amx();
+    }
 
     const bool is_avx512_fp32_supported = 
-        InstructionSet::get_instance().is_avx512f_supported && 
-        InstructionSet::get_instance().is_avx512cd_supported && 
-        InstructionSet::get_instance().is_avx512bw_supported && 
-        InstructionSet::get_instance().is_avx512dq_supported && 
-        InstructionSet::get_instance().is_avx512vl_supported;
+        InstructionSet::get_instance().is_avx512_cap_skylake;
 
     if (env_kernel == "fp16" || env_kernel == "2") {
         current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_avx512_sorting_fp16;
@@ -151,6 +172,14 @@ static void init_hook_x86() {
 
         return;
     }
+
+    // the default use case 
+    if (verbosity > 0) {
+        printf("smalltopk uses a no-op kernel as a default one\n");
+    }
+
+    current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_dummy;
+    current_get_min_k_fp32_hook = get_min_k_fp32_dummy;
 }
 #endif
 
@@ -299,15 +328,61 @@ bool knn_L2sqr_fp32(
 
     switch (params->kernel) {
         case 1:
-            return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            if (smalltopk::InstructionSet::get_instance().is_avx512_cap_skylake) {
+                return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            } else {
+                if (smalltopk::verbosity > 0) {
+                    printf("smalltopk prevents running knn_L2sqr_fp32_avx512_sorting_fp32 kernel because of missing CPU instructions support.\n");
+                }
+
+                return false;
+            }
+
         case 2:
-            return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp16(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            if (smalltopk::InstructionSet::get_instance().is_avx512fp16_supported) {
+                return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp16(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            } else {
+                if (smalltopk::verbosity > 0) {
+                    printf("smalltopk prevents running knn_L2sqr_fp32_avx512_sorting_fp16 kernel because of missing CPU instructions support.\n");
+                }
+
+                return false;
+            }
+
         case 3:
-            return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32hack(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            if (smalltopk::InstructionSet::get_instance().is_avx512_cap_skylake) {
+                return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32hack(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            } else {
+                if (smalltopk::verbosity > 0) {
+                    printf("smalltopk prevents running knn_L2sqr_fp32_avx512_sorting_fp32hack kernel because of missing CPU instructions support.\n");
+                }
+
+                return false;
+            }
+
         case 4:
-            return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32hack_amx(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            if (smalltopk::InstructionSet::get_instance().is_avx512bf16_supported &&
+                smalltopk::InstructionSet::get_instance().is_avx512amxbf16_supported) {
+                return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32hack_amx(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            } else {
+                if (smalltopk::verbosity > 0) {
+                    printf("smalltopk prevents running knn_L2sqr_fp32_avx512_sorting_fp32hack_amx kernel because of missing CPU instructions support.\n");
+                }
+
+                return false;
+            }
+
         case 5:
-            return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32hack_approx(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            if (smalltopk::InstructionSet::get_instance().is_avx512_cap_skylake) {
+                return smalltopk::knn_L2sqr_fp32_avx512_sorting_fp32hack_approx(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
+            } else {
+                if (smalltopk::verbosity > 0) {
+                    printf("smalltopk prevents running knn_L2sqr_fp32_avx512_sorting_fp32hack_approx kernel because of missing CPU instructions support.\n");
+                }
+
+                return false;
+            }
+
         case 0:
         default:
             return smalltopk::current_knn_l2sqr_fp32_hook(x, y, d, nx, ny, k, x_norm_l2sqr, y_norm_l2sqr, dis, ids, params);
@@ -338,9 +413,27 @@ bool get_min_k_fp32(
 
     switch (params->kernel) {
         case 1:
-            return smalltopk::get_min_k_fp32_avx512(src_dis, n, k, dis, ids, params);
+            if (smalltopk::InstructionSet::get_instance().is_avx512_cap_skylake) {
+                return smalltopk::get_min_k_fp32_avx512(src_dis, n, k, dis, ids, params);
+            } else {
+                if (smalltopk::verbosity > 0) {
+                    printf("smalltopk prevents running get_min_k_fp32_avx512 kernel because of missing CPU instructions support.\n");
+                }
+
+                return false;
+            }
+
         case 3:
-            return smalltopk::get_min_k_fp32hack_avx512(src_dis, n, k, dis, ids, params);
+            if (smalltopk::InstructionSet::get_instance().is_avx512_cap_skylake) {
+                return smalltopk::get_min_k_fp32hack_avx512(src_dis, n, k, dis, ids, params);
+            } else {
+                if (smalltopk::verbosity > 0) {
+                    printf("smalltopk prevents running get_min_k_fp32hack_avx512 kernel because of missing CPU instructions support.\n");
+                }
+
+                return false;
+            }
+
         case 0:
         default:
             return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
