@@ -5,11 +5,10 @@
 #include <limits>
 #include <type_traits>
 
-#include "kernel_components.h"
-#include "sorting_networks.h"
+#include <smalltopk/arm/kernel_components.h>
+#include <smalltopk/arm/sorting_networks.h>
 
-#include "../utils/macro_repeat_define.h"
-
+#include <smalltopk/utils/macro_repeat_define.h>
 
 namespace smalltopk {
 
@@ -50,13 +49,14 @@ template <
     typename DistancesEngineT,
     typename IndicesEngineT,
     size_t NY_POINTS_PER_LOOP,
-    size_t SORTING_K>
+    size_t SORTING_K,
+    typename output_ids_type>
 //__attribute_noinline__
 __attribute__((always_inline))
 void offload1(
         const typename DistancesEngineT::scalar_type* const __restrict x_norms,
         float* const __restrict dis,
-        int64_t* const __restrict ids,
+        output_ids_type* const __restrict ids,
         // MAX_SORTING_K
         REPEAT_1D(DECLARE_SORTING_PARAM, 24)
         const svbool_t& dis_mask
@@ -108,7 +108,7 @@ void offload1(
 
 #undef FINALIZE
 
-    offload<SORTING_K>(output_d, output_i, dis, ids, dis_simd_width);
+    offload<SORTING_K, output_ids_type>(output_d, output_i, dis, ids, dis_simd_width);
 }
 
 #undef DECLARE_SORTING_PARAM
@@ -119,7 +119,8 @@ void offload1(
 template<
     typename DistancesEngineT,
     typename IndicesEngineT,
-    size_t NY_POINTS_PER_LOOP>
+    size_t NY_POINTS_PER_LOOP,
+    typename output_ids_type>
 bool kernel_sorting_pre_k(
         const typename DistancesEngineT::scalar_type* const __restrict x,
         const typename DistancesEngineT::scalar_type* const __restrict y,
@@ -129,7 +130,7 @@ bool kernel_sorting_pre_k(
         const typename DistancesEngineT::scalar_type* const __restrict x_norms,
         const typename DistancesEngineT::scalar_type* const __restrict y_norms,
         float* const __restrict dis,
-        int64_t* const __restrict ids
+        output_ids_type* const __restrict ids
 ) {
     //
     using distances_type = typename DistancesEngineT::simd_type;
@@ -303,12 +304,12 @@ bool kernel_sorting_pre_k(
 #define USE_SORTING_PARAM(NX) sorting_d_##NX, sorting_i_##NX,
 
     // MAX_SORTING_K
-#define DISPATCH_OFFLOAD(SORTING_K)                                                                 \
-        case SORTING_K: offload1<DistancesEngineT, IndicesEngineT, NY_POINTS_PER_LOOP, SORTING_K>(  \
-            x_norms, dis, ids,                                                                      \
-            REPEAT_1D(USE_SORTING_PARAM, 24)                                                        \
-            dis_mask                                                                                \
-        );                                                                                          \
+#define DISPATCH_OFFLOAD(SORTING_K)                                                                                  \
+        case SORTING_K: offload1<DistancesEngineT, IndicesEngineT, NY_POINTS_PER_LOOP, SORTING_K, output_ids_type>(  \
+            x_norms, dis, ids,                                                                                       \
+            REPEAT_1D(USE_SORTING_PARAM, 24)                                                                         \
+            dis_mask                                                                                                 \
+        );                                                                                                           \
         break;
 
     switch(k) {
@@ -328,4 +329,4 @@ bool kernel_sorting_pre_k(
 
 }  // namespace smalltopk
 
-#include "../utils/macro_repeat_undefine.h"
+#include <smalltopk/utils/macro_repeat_undefine.h>

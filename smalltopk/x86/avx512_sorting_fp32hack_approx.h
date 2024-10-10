@@ -4,8 +4,10 @@
 #include <cstdint>
 
 extern "C" {
-#include "../smalltopk_params.h"
+#include <smalltopk/smalltopk_params.h>
 }
+
+#include <smalltopk/types.h>
 
 namespace smalltopk {
 
@@ -20,7 +22,7 @@ bool knn_L2sqr_fp32_avx512_sorting_fp32hack_approx(
     const float* const __restrict x_norm_l2sqr,
     const float* const __restrict y_norm_l2sqr,
     float* const __restrict dis,
-    int64_t* const __restrict ids,
+    smalltopk_knn_l2sqr_ids_type* const __restrict ids,
     const KnnL2sqrParameters* const __restrict params
 );
 

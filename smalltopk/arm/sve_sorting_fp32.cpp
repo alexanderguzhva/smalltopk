@@ -1,4 +1,4 @@
-#include "sve_sorting_fp32.h"
+#include <smalltopk/arm/sve_sorting_fp32.h>
 
 #include <omp.h>
 
@@ -7,13 +7,13 @@
 #include <limits>
 #include <memory>
 
-#include "../utils/norms.h"
-#include "../utils/norms-inl.h"
-#include "../utils/transpose.h"
-#include "../utils/transpose-inl.h"
+#include <smalltopk/utils/norms.h>
+#include <smalltopk/utils/norms-inl.h>
+#include <smalltopk/utils/transpose.h>
+#include <smalltopk/utils/transpose-inl.h>
 
-#include "kernel_sorting.h"
-#include "sve_vec.h"
+#include <smalltopk/arm/kernel_sorting.h>
+#include <smalltopk/arm/sve_vec.h>
 
 namespace smalltopk {
 
@@ -28,7 +28,7 @@ bool knn_L2sqr_fp32_sve_sorting_fp32(
     const float* const __restrict x_norm_l2sqr,
     const float* const __restrict y_norm_l2sqr,
     float* const __restrict dis,
-    int64_t* const __restrict ids,
+    smalltopk_knn_l2sqr_ids_type* const __restrict ids,
     const KnnL2sqrParameters* const __restrict params
 ) {
     // nothing to do?
@@ -128,7 +128,7 @@ bool knn_L2sqr_fp32_sve_sorting_fp32(
                 compute_norms_inline(x + idx_x_start * d, nx_points_per_tile, d, tmp_x_norms.get());
             }
 
-            const bool success = kernel_sorting_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE>(
+            const bool success = kernel_sorting_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE, smalltopk_knn_l2sqr_ids_type>(
                 x + idx_x_start * d,
                 y,
                 d,
@@ -151,7 +151,8 @@ bool knn_L2sqr_fp32_sve_sorting_fp32(
         // let's create a temporary buffer and process
         std::unique_ptr<float[]> tmp_x = std::make_unique<float[]>(nx_points_per_tile * d);
         std::unique_ptr<float[]> tmp_dis = std::make_unique<float[]>(nx_points_per_tile * k);
-        std::unique_ptr<int64_t[]> tmp_ids = std::make_unique<int64_t[]>(nx_points_per_tile * k);
+        std::unique_ptr<smalltopk_knn_l2sqr_ids_type[]> tmp_ids = 
+            std::make_unique<smalltopk_knn_l2sqr_ids_type[]>(nx_points_per_tile * k);
         std::unique_ptr<float[]> tmp_x_norms = std::make_unique<float[]>(nx_points_per_tile);
 
         // populate tmp_x
@@ -169,7 +170,7 @@ bool knn_L2sqr_fp32_sve_sorting_fp32(
             compute_norms_inline(tmp_x.get(), nx_points_per_tile, d, tmp_x_norms.get());
         }
 
-        const bool success = kernel_sorting_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE>(
+        const bool success = kernel_sorting_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE, smalltopk_knn_l2sqr_ids_type>(
             tmp_x.get(),
             y,
             d,

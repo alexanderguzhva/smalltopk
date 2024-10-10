@@ -1,4 +1,4 @@
-#include "transpose.h"
+#include <smalltopk/utils/transpose.h>
 
 #include <cstddef>
 #include <cstdint>

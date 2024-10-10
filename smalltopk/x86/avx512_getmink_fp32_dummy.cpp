@@ -1,8 +1,7 @@
-#include "avx512_getmink_fp32.h"
+#include <smalltopk/x86/avx512_getmink_fp32.h>
 
 #include <cstddef>
 #include <cstdint>
-
 
 namespace smalltopk {
 

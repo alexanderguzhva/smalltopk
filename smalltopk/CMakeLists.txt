@@ -7,17 +7,19 @@ set(SMALLTOPK_SRCS
     utils/transpose.cpp
 )
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fopenmp")
+include_directories(..)
+
+set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fopenmp")
 
 # set default flags
-OPTION(SMALLTOPK_ENABLE_FP32 "Whether to enable fp32 knn kernel" OFF)
-OPTION(SMALLTOPK_ENABLE_FP32HACK "Whether to enable fp32hack knn kernel" ON)
-OPTION(SMALLTOPK_ENABLE_FP16 "Whether to enable fp16 knn kernel" OFF)
-OPTION(SMALLTOPK_ENABLE_AVX512_FP32HACK_AMX "Whether to enable fp32hack knn kernel with AMX" OFF)
-OPTION(SMALLTOPK_ENABLE_FP32HACK_APPROX "Whether to enable fp32hack knn kernel with 'fixed number of worthy candidates' approach" OFF)
+option(SMALLTOPK_ENABLE_FP32 "Whether to enable fp32 knn kernel" OFF)
+option(SMALLTOPK_ENABLE_FP32HACK "Whether to enable fp32hack knn kernel" ON)
+option(SMALLTOPK_ENABLE_FP16 "Whether to enable fp16 knn kernel" OFF)
+option(SMALLTOPK_ENABLE_AVX512_FP32HACK_AMX "Whether to enable fp32hack knn kernel with AMX" OFF)
+option(SMALLTOPK_ENABLE_FP32HACK_APPROX "Whether to enable fp32hack knn kernel with 'fixed number of worthy candidates' approach" OFF)
 
-OPTION(SMALLTOPK_ENABLE_GETMINK_FP32 "Whether to enable fp32 getmink kernel" OFF)
-OPTION(SMALLTOPK_ENABLE_GETMINK_FP32HACK "Whether to enable fp32hack getmink kernel" OFF)
+option(SMALLTOPK_ENABLE_GETMINK_FP32 "Whether to enable fp32 getmink kernel" OFF)
+option(SMALLTOPK_ENABLE_GETMINK_FP32HACK "Whether to enable fp32hack getmink kernel" OFF)
 
 # files
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")

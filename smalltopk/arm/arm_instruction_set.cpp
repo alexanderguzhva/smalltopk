@@ -1,5 +1,4 @@
-#include "arm_instruction_set.h"
-
+#include <smalltopk/arm/arm_instruction_set.h>
 
 namespace smalltopk {
 

@@ -5,11 +5,9 @@
 
 #include <arm_sve.h>
 
-#include "../utils/macro_repeat_define.h"
-
+#include <smalltopk/utils/macro_repeat_define.h>
 
 namespace smalltopk {
-
 
 // transpose (NX_POINTS, DIM) into (DIM, NX_POINTS)
 template<typename DistancesEngineT, size_t DIM>
@@ -207,14 +205,14 @@ void distances(
 #undef DECLARE_DP_PARAM
 
 
-template<size_t SORTING_K>
+template<size_t SORTING_K, typename output_ids_type>
 //__attribute_noinline__
 __attribute__((always_inline))
 void offload(
     const float* const __restrict output_d,
     const uint32_t* const __restrict output_i,
     float* const __restrict dis,
-    int64_t* const __restrict ids,
+    output_ids_type* const __restrict ids,
     const uint64_t dis_simd_width
 ) {
     // transpose output results
@@ -225,34 +223,38 @@ void offload(
         for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
             for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
                 dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = output_i[nx_k + i_k * WIDTH];
+                ids[nx_k * SORTING_K + i_k] = 
+                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
             }
         }
-    } else if (dis_simd_width == 4) {
-        constexpr size_t WIDTH = 4;
+    } else if (dis_simd_width == 8) {
+        constexpr size_t WIDTH = 8;
 
         for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
             for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
                 dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = output_i[nx_k + i_k * WIDTH];
+                ids[nx_k * SORTING_K + i_k] = 
+                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
             }
         }
-    } else if (dis_simd_width == 4) {
-        constexpr size_t WIDTH = 4;
+    } else if (dis_simd_width == 16) {
+        constexpr size_t WIDTH = 16;
 
         for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
             for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
                 dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = output_i[nx_k + i_k * WIDTH];
+                ids[nx_k * SORTING_K + i_k] = 
+                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
             }
         }
-    } else if (dis_simd_width == 4) {
-        constexpr size_t WIDTH = 4;
+    } else if (dis_simd_width == 32) {
+        constexpr size_t WIDTH = 32;
 
         for (size_t nx_k = 0; nx_k < WIDTH; nx_k++) {
             for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
                 dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * WIDTH];
-                ids[nx_k * SORTING_K + i_k] = output_i[nx_k + i_k * WIDTH];
+                ids[nx_k * SORTING_K + i_k] = 
+                    static_cast<output_ids_type>(output_i[nx_k + i_k * WIDTH]);
             }
         }
     } else {
@@ -260,7 +262,8 @@ void offload(
         for (size_t nx_k = 0; nx_k < dis_simd_width; nx_k++) {
             for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
                 dis[nx_k * SORTING_K + i_k] = output_d[nx_k + i_k * dis_simd_width];
-                ids[nx_k * SORTING_K + i_k] = output_i[nx_k + i_k * dis_simd_width];
+                ids[nx_k * SORTING_K + i_k] = 
+                    static_cast<output_ids_type>(output_i[nx_k + i_k * dis_simd_width]);
             }
         }
     }
@@ -268,5 +271,4 @@ void offload(
 
 }  // namespace smalltopk
 
-#include "../utils/macro_repeat_undefine.h"
-
+#include <smalltopk/utils/macro_repeat_undefine.h>

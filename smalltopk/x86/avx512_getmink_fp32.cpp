@@ -1,14 +1,14 @@
-#include "avx512_getmink_fp32.h"
+#include <smalltopk/x86/avx512_getmink_fp32.h>
 
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
 
-#include "avx512_vec_fp32.h"
-#include "kernel_getmink.h"
+#include <smalltopk/x86/avx512_vec_fp32.h>
+#include <smalltopk/x86/kernel_getmink.h>
 
-#include "../utils/macro_repeat_define.h"
+#include <smalltopk/utils/macro_repeat_define.h>
 
 namespace smalltopk {
 
@@ -61,4 +61,4 @@ REPEATR_1D(DISPATCH_KERNEL, 1, 24)
 
 }  // namespace smalltopk
 
-#include "../utils/macro_repeat_undefine.h"
+#include <smalltopk/utils/macro_repeat_undefine.h>

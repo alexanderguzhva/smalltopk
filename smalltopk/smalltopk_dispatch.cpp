@@ -5,36 +5,38 @@
 #include <vector>
 
 extern "C" {
-#include "smalltopk_params.h"
-#include "smalltopk.h"
+#include <smalltopk/smalltopk_params.h>
+#include <smalltopk/smalltopk.h>
 }
 
-#include "utils/env.h"
+#include <smalltopk/types.h>
 
-#include "dummy.h"
+#include <smalltopk/utils/env.h>
+
+#include <smalltopk/dummy.h>
 
 #ifdef __x86_64__
-#include "x86/x86_instruction_set.h"
-#include "x86/amx_init.h"
+#include <smalltopk/x86/x86_instruction_set.h>
+#include <smalltopk/x86/amx_init.h>
 
-#include "x86/avx512_sorting_fp32.h"
-#include "x86/avx512_sorting_fp16.h"
-#include "x86/avx512_sorting_fp32hack.h"
-#include "x86/avx512_sorting_fp32hack_amx.h"
-#include "x86/avx512_sorting_fp32hack_approx.h"
+#include <smalltopk/x86/avx512_sorting_fp32.h>
+#include <smalltopk/x86/avx512_sorting_fp16.h>
+#include <smalltopk/x86/avx512_sorting_fp32hack.h>
+#include <smalltopk/x86/avx512_sorting_fp32hack_amx.h>
+#include <smalltopk/x86/avx512_sorting_fp32hack_approx.h>
 
-#include "x86/avx512_getmink_fp32.h"
-#include "x86/avx512_getmink_fp32hack.h"
+#include <smalltopk/x86/avx512_getmink_fp32.h>
+#include <smalltopk/x86/avx512_getmink_fp32hack.h>
 #endif
 
 #ifdef __aarch64__
-#include "arm/arm_instruction_set.h"
-#include "arm/sve_sorting_fp32.h"
-#include "arm/sve_sorting_fp16.h"
-#include "arm/sve_sorting_fp32hack.h"
-#include "arm/sve_sorting_fp32hack_approx.h"
+#include <smalltopk/arm/arm_instruction_set.h>
+#include <smalltopk/arm/sve_sorting_fp32.h>
+#include <smalltopk/arm/sve_sorting_fp16.h>
+#include <smalltopk/arm/sve_sorting_fp32hack.h>
+#include <smalltopk/arm/sve_sorting_fp32hack_approx.h>
 
-#include "arm/sve_getmink_fp32.h"
+#include <smalltopk/arm/sve_getmink_fp32.h>
 #endif
 
 namespace smalltopk {
@@ -50,7 +52,7 @@ using knn_l2sqr_fp32_handler_type = bool(*)(
     const float* const __restrict x_norm_l2sqr,
     const float* const __restrict y_norm_l2sqr,
     float* const __restrict dis,
-    int64_t* const __restrict ids,
+    smalltopk_knn_l2sqr_ids_type* const __restrict ids,
     const KnnL2sqrParameters* const __restrict params
 );
 
@@ -250,7 +252,7 @@ bool knn_L2sqr_fp32(
     const float* const __restrict x_norm_l2sqr,
     const float* const __restrict y_norm_l2sqr,
     float* const __restrict dis,
-    int64_t* const __restrict ids,
+    smalltopk_knn_l2sqr_ids_type* const __restrict ids,
     const KnnL2sqrParameters* const __restrict params
 ) {
     if (smalltopk::verbosity == 2) {

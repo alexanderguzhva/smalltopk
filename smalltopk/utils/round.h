@@ -7,7 +7,7 @@ namespace smalltopk {
 
 static inline uint32_t next_power_of_2(const uint32_t value) {
     // Round up to the next highest power of 2
-    uint32_t next_pow2 = value; 
+    uint32_t next_pow2 = value;
     next_pow2 -= 1;
     next_pow2 |= next_pow2 >> 1;
     next_pow2 |= next_pow2 >> 2;

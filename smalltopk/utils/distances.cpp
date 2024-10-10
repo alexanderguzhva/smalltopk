@@ -1,4 +1,4 @@
-#include "distances.h"
+#include <smalltopk/utils/distances.h>
 
 #include <cstdint>
 #include <cstddef>

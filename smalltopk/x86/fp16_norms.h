@@ -3,10 +3,10 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "avx512_vec_fp16.h"
+#include <smalltopk/x86/avx512_vec_fp16.h>
 
-#include "../utils/norms-inl.h"
-#include "../utils/distances-inl.h"
+#include <smalltopk/utils/norms-inl.h>
+#include <smalltopk/utils/distances-inl.h>
 
 namespace smalltopk {
 

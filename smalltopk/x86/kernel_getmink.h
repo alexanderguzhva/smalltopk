@@ -5,10 +5,7 @@
 #include <limits>
 #include <type_traits>
 
-#include "../utils/macro_repeat_define.h"
-
-#include "sorting_networks.h"
-
+#include <smalltopk/x86/sorting_networks.h>
 
 namespace smalltopk {
 
@@ -206,6 +203,3 @@ bool kernel_getmink(
 }
 
 }
-
-#include "../utils/macro_repeat_undefine.h"
-

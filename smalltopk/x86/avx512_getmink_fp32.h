@@ -4,7 +4,7 @@
 #include <cstdint>
 
 extern "C" {
-#include "../smalltopk_params.h"
+#include <smalltopk/smalltopk_params.h>
 }
 
 namespace smalltopk {

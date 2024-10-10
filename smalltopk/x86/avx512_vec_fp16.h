@@ -8,7 +8,6 @@
 
 namespace smalltopk {
 
-
 static inline uint16_t fp32_to_fp16(const float v) {
     const __m128 xf = _mm_set1_ps(v);
     const __m128i xi = _mm_cvtps_ph(xf, _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC);

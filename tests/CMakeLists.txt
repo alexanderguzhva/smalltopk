@@ -1,4 +1,4 @@
-include_directories(${CMAKE_HOME_DIRECTORY}/src)
+include_directories(${CMAKE_HOME_DIRECTORY})
 
 find_package(GTest REQUIRED)
 find_package(BLAS REQUIRED)

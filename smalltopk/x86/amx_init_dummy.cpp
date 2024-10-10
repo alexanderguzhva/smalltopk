@@ -1,4 +1,4 @@
-#include "amx_init.h"
+#include <smalltopk/x86/amx_init.h>
 
 namespace smalltopk {
 

@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 
-#include "distances-inl.h"
+#include <smalltopk/utils/distances-inl.h>
 
 namespace smalltopk {
 

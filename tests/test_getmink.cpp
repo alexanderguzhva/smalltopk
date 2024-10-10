@@ -6,7 +6,7 @@
 #include <vector>
 
 extern "C" {
-#include <smalltopk.h>
+#include <smalltopk/smalltopk.h>
 }
 
 #include "from_faiss/distances.h"

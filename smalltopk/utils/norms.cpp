@@ -1,9 +1,9 @@
-#include "norms.h"
+#include <smalltopk/utils/norms.h>
 
 #include <cstdint>
 #include <cstddef>
 
-#include "distances.h"
+#include <smalltopk/utils/distances.h>
 
 namespace smalltopk {
 

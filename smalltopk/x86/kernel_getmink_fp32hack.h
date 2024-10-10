@@ -5,11 +5,9 @@
 #include <limits>
 #include <type_traits>
 
-#include "../utils/macro_repeat_define.h"
-#include "../utils/round.h"
+#include <smalltopk/utils/round.h>
 
-#include "sorting_networks.h"
-
+#include <smalltopk/x86/sorting_networks.h>
 
 namespace smalltopk {
 
@@ -34,7 +32,6 @@ void cmpxchg(
 };
 
 }
-
 
 template<
     typename DistancesEngineT,
@@ -194,5 +191,3 @@ bool kernel_getmink_fp32hack(
 }
 
 }
-
-#include "../utils/macro_repeat_undefine.h"

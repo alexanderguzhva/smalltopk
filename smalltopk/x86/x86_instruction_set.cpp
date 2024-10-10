@@ -1,4 +1,4 @@
-#include "x86_instruction_set.h"
+#include <smalltopk/x86/x86_instruction_set.h>
 
 #include <cpuid.h>
 

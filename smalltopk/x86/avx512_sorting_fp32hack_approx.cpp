@@ -1,4 +1,4 @@
-#include "avx512_sorting_fp32hack_approx.h"
+#include <smalltopk/x86/avx512_sorting_fp32hack_approx.h>
 
 #include <omp.h>
 
@@ -7,14 +7,13 @@
 #include <limits>
 #include <memory>
 
-#include "../utils/norms.h"
-#include "../utils/norms-inl.h"
-#include "../utils/transpose.h"
-#include "../utils/transpose-inl.h"
+#include <smalltopk/utils/norms.h>
+#include <smalltopk/utils/norms-inl.h>
+#include <smalltopk/utils/transpose.h>
+#include <smalltopk/utils/transpose-inl.h>
 
-#include "kernel_sorting_fp32hack_approx.h"
-#include "avx512_vec_fp32.h"
-
+#include <smalltopk/x86/kernel_sorting_fp32hack_approx.h>
+#include <smalltopk/x86/avx512_vec_fp32.h>
 
 namespace smalltopk {
 
@@ -29,7 +28,7 @@ bool knn_L2sqr_fp32_avx512_sorting_fp32hack_approx(
     const float* const __restrict x_norm_l2sqr,
     const float* const __restrict y_norm_l2sqr,
     float* const __restrict dis,
-    int64_t* const __restrict ids,
+    smalltopk_knn_l2sqr_ids_type* const __restrict ids,
     const KnnL2sqrParameters* const __restrict params
 ) {
     // nothing to do?
@@ -143,7 +142,7 @@ bool knn_L2sqr_fp32_avx512_sorting_fp32hack_approx(
                 compute_norms_inline(x + idx_x_start * d, NX_POINTS_PER_TILE, d, tmp_x_norms.get());
             }
 
-            const bool success = kernel_sorting_fp32hack_approx_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE>(
+            const bool success = kernel_sorting_fp32hack_approx_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE, smalltopk_knn_l2sqr_ids_type>(
                 x + idx_x_start * d,
                 y,
                 d,
@@ -172,7 +171,8 @@ bool knn_L2sqr_fp32_avx512_sorting_fp32hack_approx(
         // let's create a temporary buffer and process
         std::unique_ptr<float[]> tmp_x = std::make_unique<float[]>(NX_POINTS_PER_TILE * d);
         std::unique_ptr<float[]> tmp_dis = std::make_unique<float[]>(NX_POINTS_PER_TILE * k);
-        std::unique_ptr<int64_t[]> tmp_ids = std::make_unique<int64_t[]>(NX_POINTS_PER_TILE * k);
+        std::unique_ptr<smalltopk_knn_l2sqr_ids_type[]> tmp_ids = 
+            std::make_unique<smalltopk_knn_l2sqr_ids_type[]>(NX_POINTS_PER_TILE * k);
         std::unique_ptr<float[]> tmp_x_norms = std::make_unique<float[]>(NX_POINTS_PER_TILE);
 
         // populate tmp_x
@@ -190,7 +190,7 @@ bool knn_L2sqr_fp32_avx512_sorting_fp32hack_approx(
             compute_norms_inline(tmp_x.get(), NX_POINTS_PER_TILE, d, tmp_x_norms.get());
         }
 
-        const bool success = kernel_sorting_fp32hack_approx_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE>(
+        const bool success = kernel_sorting_fp32hack_approx_pre_k<distances_engine_type, indices_engine_type, NY_POINTS_PER_TILE, smalltopk_knn_l2sqr_ids_type>(
             tmp_x.get(),
             y,
             d,

@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 
-
 namespace smalltopk {
 
 // transpose (NX_POINTS, DIM) into (DIM, NX_POINTS)
@@ -20,7 +19,6 @@ void transpose(
         }
     }
 }
-
 
 // compute a set of y^2 - 2xy values
 template <
@@ -92,19 +90,20 @@ void distances(
 
 // transpose (SORTING_K, NX_POINTS) from final-s and 
 //   write (NX_POINTS, SORTING_K) into (dis, ids) 
-template<size_t NX_POINTS, size_t SORTING_K>
+template<size_t NX_POINTS, size_t SORTING_K, typename output_ids_type>
 //__attribute_noinline__
 __attribute__((always_inline))
 void offload(
     const float* const __restrict final_d,
     const uint32_t* const __restrict final_i,
     float* const __restrict dis,
-    int64_t* const __restrict ids
+    output_ids_type* const __restrict ids
 ) {
     for (size_t nx_k = 0; nx_k < NX_POINTS; nx_k++) {
         for (size_t i_k = 0; i_k < SORTING_K; i_k++) {
             dis[nx_k * SORTING_K + i_k] = final_d[nx_k + i_k * NX_POINTS];
-            ids[nx_k * SORTING_K + i_k] = final_i[nx_k + i_k * NX_POINTS];
+            ids[nx_k * SORTING_K + i_k] = 
+                static_cast<output_ids_type>(final_i[nx_k + i_k * NX_POINTS]);
         }
     }
 }

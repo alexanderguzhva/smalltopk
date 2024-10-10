@@ -1,4 +1,4 @@
-#include "amx_init.h"
+#include <smalltopk/x86/amx_init.h>
 
 #include <sys/syscall.h>
 #include <unistd.h>
@@ -26,3 +26,8 @@ bool init_amx() {
 }
 
 }  // namespace smalltopk
+
+#undef ARCH_GET_XCOMP_PERM
+#undef ARCH_REQ_XCOMP_PERM
+#undef XFEATURE_XTILECFG
+#undef XFEATURE_XTILEDATA

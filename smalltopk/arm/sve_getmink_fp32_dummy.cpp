@@ -1,8 +1,7 @@
-#include "sve_getmink_fp32.h"
+#include <smalltopk/arm/sve_getmink_fp32.h>
 
 #include <cstddef>
 #include <cstdint>
-
 
 namespace smalltopk {
 

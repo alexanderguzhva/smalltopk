@@ -1,9 +1,9 @@
 #include "IndexSmallTopK.h"
 
-#include <stdio.h>
+#include <cstdio>
 
 extern "C" {
-    #include "../src/smalltopk.h"
+    #include "../smalltopk/smalltopk.h"
 }
 
 namespace faiss {

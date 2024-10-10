@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "../utils/macro_repeat_define.h"
+#include <smalltopk/utils/macro_repeat_define.h>
 
 namespace smalltopk {
 
@@ -1142,4 +1142,4 @@ REPEAT_1D(GENERATE_INPUTS, 16)
 
 }  // namespace smalltopk
 
-#include "../utils/macro_repeat_undefine.h"
+#include <smalltopk/utils/macro_repeat_undefine.h>
