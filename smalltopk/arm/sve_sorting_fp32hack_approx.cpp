@@ -2,11 +2,11 @@
 
 #include <omp.h>
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <cstdio>
 
 #include <smalltopk/utils/norms.h>
 #include <smalltopk/utils/norms-inl.h>
@@ -33,8 +33,13 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack_approx(
     const KnnL2sqrParameters* const __restrict params
 ) {
     // nothing to do?
-    if (nx == 0 || ny == 0) {
+    if (nx == 0 || ny == 0 || k == 0) {
         return true;
+    }
+
+    // missing input?
+    if (x == nullptr || y_in == nullptr) {
+        return false;
     }
 
     // not supported?
@@ -112,6 +117,7 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack_approx(
     //   then apply approx sorting network approach
     const size_t ny_when_approx_is_enabled = NY_POINTS_PER_TILE;
 
+    std::atomic_bool succeeded = true;
 #pragma omp parallel
     {
         const int rank = omp_get_thread_num();
@@ -151,7 +157,16 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack_approx(
                 n_worthy_candidates,
                 ny_when_approx_is_enabled
             );
+
+            if (!success) {
+                succeeded.store(false);
+                break;
+            }
         }
+    }
+
+    if (!succeeded) {
+        return false;
     }
 
     // process leftovers
@@ -195,6 +210,10 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack_approx(
             n_worthy_candidates,
             ny_when_approx_is_enabled
         );
+
+        if (!success) {
+            return false;
+        }
 
         // copy back dis and ids
         for (size_t i = nx_with_points; i < nx; i++) {

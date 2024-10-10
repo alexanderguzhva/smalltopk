@@ -22,8 +22,13 @@ bool get_min_k_fp32_avx512(
     const GetKParameters* const __restrict params
 ) {
     // nothing to do?
-    if (n == 0) {
+    if (n == 0 || k == 0) {
         return true;
+    }
+
+    // missing input?
+    if (src_dis == nullptr) {
+        return false;
     }
 
     // not supported?
@@ -40,7 +45,13 @@ bool get_min_k_fp32_avx512(
     const size_t N_REGISTERS_PER_LOOP = 8;
 
     //
-    const size_t n_levels = (params != nullptr) ? params->n_levels : (1 + (k + 1) / 3);
+    size_t n_levels = (params != nullptr) ? params->n_levels : (1 + (k + 1) / 3);
+    if (n_levels == 0) {
+        return true;
+    }
+    if (n_levels > k) {
+        n_levels = k;
+    }
 
 #define DISPATCH_KERNEL(NX) \
         case NX:    \

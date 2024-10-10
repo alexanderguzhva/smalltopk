@@ -2,11 +2,11 @@
 
 #include <omp.h>
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <cstdio>
 
 #include <smalltopk/utils/norms.h>
 #include <smalltopk/utils/norms-inl.h>
@@ -33,8 +33,13 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack(
     const KnnL2sqrParameters* const __restrict params
 ) {
     // nothing to do?
-    if (nx == 0 || ny == 0) {
+    if (nx == 0 || ny == 0 || k == 0) {
         return true;
+    }
+
+    // missing input?
+    if (x == nullptr || y_in == nullptr) {
+        return false;
     }
 
     // not supported?
@@ -103,6 +108,7 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack(
     // number of points to be processed in parallel
     const size_t nx_with_points = nx_tiles * nx_points_per_tile; 
 
+    std::atomic_bool succeeded = true;
 #pragma omp parallel
     {
         const int rank = omp_get_thread_num();
@@ -140,7 +146,16 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack(
                 (dis == nullptr) ? nullptr : (dis + idx_x_start * k),
                 (ids == nullptr) ? nullptr : (ids + idx_x_start * k)
             );
+
+            if (!success) {
+                succeeded.store(false);
+                break;
+            }
         }
+    }
+
+    if (!succeeded) {
+        return false;
     }
 
     // process leftovers
@@ -182,6 +197,10 @@ bool knn_L2sqr_fp32_sve_sorting_fp32hack(
             tmp_dis.get(),
             tmp_ids.get()
         );
+
+        if (!success) {
+            return false;
+        }
 
         // copy back dis and ids
         for (size_t i = nx_with_points; i < nx; i++) {
