@@ -21,9 +21,6 @@ void cmpxchg(
     using distances_type = typename DistancesEngineT::simd_type;
     using indices_type = typename IndicesEngineT::simd_type;
 
-    using distance_type = typename DistancesEngineT::scalar_type;
-    using index_type = typename IndicesEngineT::scalar_type;
-
     //
     const auto cmp_d = DistancesEngineT::compare_le(a_d, b_d);
 

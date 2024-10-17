@@ -111,7 +111,7 @@ if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
     endif()
 
     # getmink FP32 
-        if (SMALLTOPK_ENABLE_GETMINK_FP32HACK)
+    if (SMALLTOPK_ENABLE_GETMINK_FP32HACK)
         message(STATUS "including fp32hack getmink kernel")
 
         list(APPEND SMALLTOPK_SRCS x86/avx512_getmink_fp32hack.cpp)
@@ -127,7 +127,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
     # I don't care about a debug version
     # Sometimes, one needs to add -msve-vector-bits=256, bcz otherwise 
     #   gcc triggers an internal compiler error.
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mtune=native -O3 -ffast-math -mcpu=neoverse-v1")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a+sve -mtune=native -O3 -ffast-math -mcpu=neoverse-v1")
 
     # this file is always needed
     list(APPEND SMALLTOPK_SRCS arm/arm_instruction_set.cpp)
@@ -180,6 +180,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
         list(APPEND SMALLTOPK_SRCS arm/sve_sorting_fp32hack_approx_dummy.cpp)
     endif()
 
+
     # getmink FP32 
     if (SMALLTOPK_ENABLE_GETMINK_FP32)
         message(STATUS "including fp32 getmink kernel")
@@ -190,6 +191,18 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm*")
         message(STATUS "not including fp32 getmink kernel")
 
         list(APPEND SMALLTOPK_SRCS arm/sve_getmink_fp32_dummy.cpp)
+    endif()
+
+    # getmink FP32 hack
+    if (SMALLTOPK_ENABLE_GETMINK_FP32HACK)
+        message(STATUS "including fp32hack getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS arm/sve_getmink_fp32hack.cpp)
+        # set_source_files_properties(arm/sve_getmink_fp32hack.cpp PROPERTIES COMPILE_FLAGS "")
+    else()
+        message(STATUS "not including fp32hack getmink kernel")
+
+        list(APPEND SMALLTOPK_SRCS arm/sve_getmink_fp32hack_dummy.cpp)
     endif()
 
 endif()

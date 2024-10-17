@@ -14,7 +14,7 @@
 #include <smalltopk/utils/transpose.h>
 #include <smalltopk/utils/transpose-inl.h>
 
-#include <smalltopk/arm/kernel_sorting_fp32hack.h>
+#include <smalltopk/arm/kernel_sorting.h>
 #include <smalltopk/arm/sve_vec.h>
 
 namespace smalltopk {

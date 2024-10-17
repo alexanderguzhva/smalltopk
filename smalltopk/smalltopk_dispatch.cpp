@@ -37,6 +37,7 @@ extern "C" {
 #include <smalltopk/arm/sve_sorting_fp32hack_approx.h>
 
 #include <smalltopk/arm/sve_getmink_fp32.h>
+#include <smalltopk/arm/sve_getmink_fp32hack.h>
 #endif
 
 namespace smalltopk {
@@ -209,7 +210,7 @@ static void init_hook_aarch64() {
             }
 
             current_knn_l2sqr_fp32_hook = knn_L2sqr_fp32_sve_sorting_fp32hack;
-            current_get_min_k_fp32_hook = get_min_k_fp32_sve;
+            current_get_min_k_fp32_hook = get_min_k_fp32hack_sve;
         } else if (env_kernel == "fp32hack_approx" || env_kernel == "hack_approx" || env_kernel == "5") {
             if (verbosity > 0) {
                 printf("smalltopk uses knn_L2sqr_fp32_sve_sorting_fp32hack_approx kernel as a default one\n");
@@ -401,8 +402,29 @@ bool get_min_k_fp32(
     int32_t* const __restrict ids,
     const GetKParameters* const __restrict params
 ) {
+    if (smalltopk::verbosity == 2) {
+        printf("smalltopk running get_min_k_fp32, n=%" PRIu32 
+            ", k=%" PRIu32 "\n",
+            uint32_t(n),
+            uint32_t(k));
+    }
+
 #ifdef __aarch64__
-    return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
+    if (params == nullptr) {
+        return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
+    }
+
+    switch (params->kernel) {
+        case 1:
+            return smalltopk::get_min_k_fp32_sve(src_dis, n, k, dis, ids, params);
+        case 3:
+            return smalltopk::get_min_k_fp32hack_sve(src_dis, n, k, dis, ids, params);
+        case 0:
+        default:
+            return smalltopk::current_get_min_k_fp32_hook(src_dis, n, k, dis, ids, params);
+    }
+
+    return false;
 #endif
 
 #ifdef __x86_64__

@@ -22,8 +22,6 @@ void cmpxchg(
 ) {
     using distances_type = typename DistancesEngineT::simd_type;
 
-    using distance_type = typename DistancesEngineT::scalar_type;
-
     const distances_type min_d_new = DistancesEngineT::min(a_d, b_d);
     const distances_type max_d_new = DistancesEngineT::max(a_d, b_d);
 
