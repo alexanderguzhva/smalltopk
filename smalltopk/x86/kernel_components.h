@@ -38,10 +38,6 @@ void distances(
     typename DistancesEngineT::simd_type* __restrict dp_i
 ) {
     using distances_type = typename DistancesEngineT::simd_type;
-    using indices_type = typename IndicesEngineT::simd_type;
-
-    using distance_type = typename DistancesEngineT::scalar_type;
-    using index_type = typename IndicesEngineT::scalar_type;
 
     // perform dp = x[0] * y[0]
     // DIM 0 that uses MUL

@@ -1038,6 +1038,8 @@ There is a practical procedure for extracting top `K` from `M` SIMD registers th
 * Put the corresponding `(distance, index)` result into the output array
 * Move all values in the corresponding lane (which contains the best value) down one `row`. Add `infinite` value in the corresponding late in the `top` SIMD register (register `M-1`, typically). For example, for AVX512 this can be implemented using `2 * M` very cheap `_mm512_mask_blend_XYZ` instructions (one `M` for distances, one `M` for indices).
 
+TODO: it is possible to accumulate the result in lanes of a single register using `permutexvar` over fp32hack, then unpack fp32hack in vector instructions, then perform two write instructions, instead of doing the same for every extracted top value.
+
 Curiously, this process is usually Much faster than extracting `K` values from `M` SIMD registers of width `SIMD_WIDTH` using a binary heap.
 
 In theory, a different approach that uses `permutexvar`s over transposed SIMD registers plus a sorted `bottom` SIMD register is possible, but I did not explore this approach.
