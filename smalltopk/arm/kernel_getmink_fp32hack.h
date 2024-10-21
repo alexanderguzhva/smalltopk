@@ -1,5 +1,7 @@
 #pragma once
 
+#include <arm_sve.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <limits>
